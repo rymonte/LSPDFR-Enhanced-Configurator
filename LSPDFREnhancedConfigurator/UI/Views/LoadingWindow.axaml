@@ -1,0 +1,61 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+        x:Class="LSPDFREnhancedConfigurator.UI.Views.LoadingWindow"
+        x:DataType="vm:LoadingWindowViewModel"
+        Title="Loading..."
+        Width="500" Height="250"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
+        ShowInTaskbar="False"
+        SystemDecorations="BorderOnly">
+
+    <Design.DataContext>
+        <vm:LoadingWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="*,Auto,Auto">
+
+        <!-- Logo and Title -->
+        <StackPanel Grid.Row="0"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
+                   Spacing="16">
+            <Image Source="/Resources/Images/logo-transparent.png"
+                   Width="80"
+                   Height="80"
+                   HorizontalAlignment="Center"/>
+            <TextBlock Text="LSPDFR Enhanced Configurator"
+                      FontSize="18"
+                      FontWeight="Bold"
+                      Foreground="{StaticResource AccentCyanBrush}"
+                      HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Progress Bar -->
+        <StackPanel Grid.Row="1" Margin="40,0,40,20" Spacing="8">
+            <TextBlock Text="{Binding StatusText}"
+                      FontSize="12"
+                      Foreground="{StaticResource TextWhiteBrush}"
+                      HorizontalAlignment="Center"/>
+            <ProgressBar Value="{Binding Progress}"
+                        Minimum="0"
+                        Maximum="100"
+                        Height="8"
+                        IsIndeterminate="{Binding IsIndeterminate}"/>
+        </StackPanel>
+
+        <!-- Status Message -->
+        <Border Grid.Row="2"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource InputBorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="20,12">
+            <TextBlock Text="{Binding DetailText}"
+                      FontSize="10"
+                      Foreground="{StaticResource TextGrayBrush}"
+                      HorizontalAlignment="Center"/>
+        </Border>
+
+    </Grid>
+</Window>

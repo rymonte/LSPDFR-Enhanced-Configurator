@@ -1,0 +1,244 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+             xmlns:models="using:LSPDFREnhancedConfigurator.Models"
+             x:Class="LSPDFREnhancedConfigurator.UI.Views.OutfitsView"
+             x:DataType="vm:OutfitsViewModel"
+             Focusable="True"
+             PointerPressed="OnBackgroundPointerPressed">
+
+    <Design.DataContext>
+        <vm:OutfitsViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*"
+          Background="Transparent">
+
+        <!-- Title -->
+        <Border Grid.Row="0"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,0,0,2"
+                Padding="16,12">
+            <TextBlock Text="Outfit Configuration"
+                      Foreground="{StaticResource AccentCyanBrush}"
+                      FontSize="18"
+                      FontWeight="Bold"/>
+        </Border>
+
+        <!-- Top Panel: Rank Selector -->
+        <Border Grid.Row="1"
+                Background="{StaticResource PrimaryDarkBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="Select Rank:"
+                              Foreground="{StaticResource TextWhiteBrush}"
+                              VerticalAlignment="Center"
+                              FontSize="14"/>
+                    <ComboBox ItemsSource="{Binding RankList}"
+                             SelectedItem="{Binding SelectedRank}"
+                             MinWidth="300"
+                             PlaceholderText="Select a rank...">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="models:RankHierarchy">
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Advisory -->
+                <StackPanel Orientation="Horizontal"
+                           Spacing="6"
+                           Margin="0,0,0,4"
+                           IsVisible="{Binding OutfitAdvisory, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <Image Source="/Resources/Icons/info-icon.png"
+                          Width="14"
+                          Height="14"
+                          VerticalAlignment="Top"
+                          Margin="0,2,0,0"/>
+                    <TextBlock Text="{Binding OutfitAdvisory}"
+                              Foreground="#00ADEA"
+                              FontSize="11"
+                              TextWrapping="Wrap"
+                              MaxWidth="580"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content: Split View -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" MinWidth="350"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="*" MinWidth="240" MaxWidth="320"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- TreeView Panel (Left) -->
+            <Border Grid.Column="0"
+                    Background="{StaticResource DarkerBackgroundBrush}"
+                    BorderBrush="{StaticResource AccentCyanBrush}"
+                    BorderThickness="2"
+                    Margin="8">
+                <TreeView Name="OutfitsTreeView"
+                         ItemsSource="{Binding OutfitTreeItems}"
+                         SelectedItem="{Binding SelectedTreeItem}"
+                         Background="Transparent"
+                         Padding="8">
+                    <TreeView.ItemTemplate>
+                        <TreeDataTemplate ItemsSource="{Binding Children}" DataType="vm:OutfitTreeItemViewModel">
+                            <Border Background="{Binding ValidationBackgroundBrush}"
+                                    CornerRadius="3"
+                                    Padding="4,2"
+                                    HorizontalAlignment="Stretch">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <CheckBox IsChecked="{Binding IsChecked}"
+                                             IsVisible="{Binding IsOutfitNode}"/>
+                                    <TextBlock Text="{Binding DisplayText}"
+                                              FontSize="14"
+                                              VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </TreeDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </Border>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1"
+                         Width="4"
+                         Background="{StaticResource AccentCyanBrush}"
+                         ResizeDirection="Columns"/>
+
+            <!-- Buttons Panel (Right) -->
+            <Border Grid.Column="2"
+                    Background="{StaticResource PrimaryDarkBrush}"
+                    Padding="12"
+                    Margin="4,8,8,8">
+                <ScrollViewer>
+                    <StackPanel Spacing="12">
+
+                        <!-- Add Outfits Button -->
+                        <Button Content="Add Outfits"
+                               Command="{Binding AddOutfitsCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="40"
+                               Padding="16,8"
+                               ToolTip.Tip="Please select an entry from the list first"/>
+
+                        <!-- Remove Selected Button -->
+                        <Button Command="{Binding RemoveOutfitsCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="40"
+                               Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                <Image Source="/Resources/Icons/delete-icon.png"
+                                      Width="16"
+                                      Height="16"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Remove Selected"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Remove All Button -->
+                        <Button Command="{Binding RemoveAllOutfitsCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="40"
+                               Padding="16,8">
+                            <TextBlock Text="Remove All"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Divider -->
+                        <Border Height="1"
+                               Background="{StaticResource AccentCyanBrush}"
+                               Margin="16,16,16,16"
+                               Opacity="0.3"/>
+
+                        <!-- Copy From Section -->
+                        <TextBlock Text="Copy From Rank:"
+                                  Foreground="{StaticResource TextWhiteBrush}"
+                                  FontSize="12"
+                                  Margin="0,0,0,4"/>
+
+                        <ComboBox ItemsSource="{Binding CopyFromRankList}"
+                                 SelectedItem="{Binding SelectedCopyFromRank}"
+                                 HorizontalAlignment="Center"
+                                 MinWidth="180"
+                                 PlaceholderText="Select source rank...">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate DataType="models:RankHierarchy">
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <Button Command="{Binding CopyFromRankCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="40"
+                               Padding="16,8"
+                               ToolTip.Tip="This will add outfits from the source rank to the current rank">
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                <Image Source="/Resources/Icons/clone-icon.png"
+                                      Width="16"
+                                      Height="16"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Copy From"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Spacer -->
+                        <Border Height="12"/>
+
+                        <!-- Copy To Section -->
+                        <TextBlock Text="Copy To Rank:"
+                                  Foreground="{StaticResource TextWhiteBrush}"
+                                  FontSize="12"
+                                  Margin="0,0,0,4"/>
+
+                        <ComboBox ItemsSource="{Binding CopyToRankList}"
+                                 SelectedItem="{Binding SelectedCopyToRank}"
+                                 HorizontalAlignment="Center"
+                                 MinWidth="180"
+                                 PlaceholderText="Select target rank...">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate DataType="models:RankHierarchy">
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <Button Command="{Binding CopyOutfitsCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="40"
+                               Padding="16,8"
+                               ToolTip.Tip="This will overwrite any outfits globally and for any matching stations in the target rank">
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                <Image Source="/Resources/Icons/clone-icon.png"
+                                      Width="16"
+                                      Height="16"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Copy Outfits"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+        </Grid>
+
+    </Grid>
+</UserControl>

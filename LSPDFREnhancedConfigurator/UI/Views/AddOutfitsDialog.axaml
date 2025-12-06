@@ -1,0 +1,163 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+        x:Class="LSPDFREnhancedConfigurator.UI.Views.AddOutfitsDialog"
+        x:DataType="vm:AddOutfitsDialogViewModel"
+        Title="Outfit Selection"
+        Width="700" Height="600"
+        MinWidth="600" MinHeight="500"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+        <!-- Header with context title -->
+        <Border Grid.Row="0"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,0,0,2"
+                Padding="16,12">
+            <TextBlock Text="{Binding Title}"
+                      FontSize="16"
+                      FontWeight="SemiBold"
+                      Foreground="{StaticResource TextWhiteBrush}"
+                      HorizontalAlignment="Center"/>
+        </Border>
+
+        <!-- Search Box -->
+        <Border Grid.Row="1"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0"
+                          Text="Search:"
+                          VerticalAlignment="Center"
+                          Margin="0,0,8,0"
+                          Foreground="{StaticResource TextWhiteBrush}"/>
+                <TextBox Grid.Column="1"
+                        Text="{Binding SearchText}"
+                        Watermark="Search by outfit name..."
+                        VerticalAlignment="Center"
+                        Margin="0,0,8,0"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="Basic"
+                              Foreground="{StaticResource TextWhiteBrush}"
+                              VerticalAlignment="Center"
+                              FontSize="11"/>
+                    <ToggleSwitch IsChecked="{Binding IsStrictSearch}"
+                                 OffContent=""
+                                 OnContent=""
+                                 ToolTip.Tip="Toggle between Basic (substring) and Strict (exact word) search"/>
+                    <TextBlock Text="Strict"
+                              Foreground="{StaticResource TextWhiteBrush}"
+                              VerticalAlignment="Center"
+                              FontSize="11"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Outfit List -->
+        <DataGrid Grid.Row="2"
+                 ItemsSource="{Binding OutfitItems}"
+                 AutoGenerateColumns="False"
+                 CanUserResizeColumns="True"
+                 CanUserSortColumns="True"
+                 GridLinesVisibility="All"
+                 IsReadOnly="False"
+                 SelectionMode="Extended"
+                 Background="{StaticResource DarkerBackgroundBrush}"
+                 Foreground="{StaticResource TextWhiteBrush}"
+                 BorderBrush="{StaticResource AccentCyanBrush}"
+                 BorderThickness="2"
+                 RowHeight="32"
+                 HeadersVisibility="Column"
+                 Margin="8"
+                 HorizontalGridLinesBrush="{StaticResource InputBorderBrush}"
+                 VerticalGridLinesBrush="{StaticResource InputBorderBrush}">
+
+            <DataGrid.Styles>
+                <Style Selector="DataGridRow">
+                    <Setter Property="Background" Value="{StaticResource DarkerBackgroundBrush}"/>
+                </Style>
+                <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+                    <Setter Property="Fill" Value="{StaticResource PrimaryDarkBrush}"/>
+                </Style>
+                <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+                    <Setter Property="Fill" Value="{StaticResource AccentCyanBrush}"/>
+                    <Setter Property="Opacity" Value="0.3"/>
+                </Style>
+                <Style Selector="DataGridCell">
+                    <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+                </Style>
+            </DataGrid.Styles>
+
+            <DataGrid.Columns>
+                <!-- Checkbox Column -->
+                <DataGridTemplateColumn Header="Select" Width="80" IsReadOnly="False" CanUserSort="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:OutfitItemViewModel">
+                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Outfit Name Column -->
+                <DataGridTextColumn Header="Outfit Name"
+                                  Binding="{Binding OutfitName}"
+                                  Width="*"
+                                  IsReadOnly="True"
+                                  CanUserSort="True"/>
+
+                <!-- Outfit Variation Column -->
+                <DataGridTextColumn Header="Outfit Variation"
+                                  Binding="{Binding VariationName}"
+                                  Width="*"
+                                  IsReadOnly="True"
+                                  CanUserSort="True"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12,8">
+            <TextBlock Text="{Binding StatusText}"
+                      Foreground="{StaticResource TextWhiteBrush}"
+                      FontSize="12"/>
+        </Border>
+
+        <!-- Bottom Button Panel -->
+        <Border Grid.Row="4"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12">
+            <StackPanel Orientation="Horizontal"
+                       HorizontalAlignment="Right"
+                       Spacing="12">
+                <Button Command="{Binding AddSelectedCommand}"
+                       MinWidth="140"
+                       Click="AddSelectedButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Image Source="/Resources/Icons/success-icon.png"
+                              Width="16"
+                              Height="16"
+                              VerticalAlignment="Center"/>
+                        <TextBlock Text="Add Selected"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Content="Cancel"
+                       MinWidth="100"
+                       Click="CancelButton_Click"/>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</Window>

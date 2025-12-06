@@ -1,0 +1,215 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+        x:Class="LSPDFREnhancedConfigurator.UI.Views.WelcomeWindow"
+        x:DataType="vm:WelcomeWindowViewModel"
+        Title="LSPDFR Enhanced Configurator"
+        Width="700" Height="900"
+        MinHeight="850"
+        WindowStartupLocation="CenterScreen"
+        CanResize="True">
+
+    <Design.DataContext>
+        <vm:WelcomeWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="*,Auto">
+
+        <!-- Main Content -->
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="20" Spacing="16">
+
+                <!-- Logo -->
+                <Image Source="/Resources/Images/logo-transparent.png"
+                       Width="250"
+                       Height="242"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,0"
+                       RenderOptions.BitmapInterpolationMode="HighQuality"/>
+
+                <!-- Title -->
+                <TextBlock Text="Welcome to LSPDFR Enhanced Configurator"
+                          FontSize="28"
+                          FontWeight="Bold"
+                          Foreground="{StaticResource TextWhiteBrush}"
+                          TextAlignment="Center"
+                          Margin="0,0,0,12"/>
+
+                <!-- Subtitle/Description -->
+                <TextBlock Text="A lightweight tool for managing your LSPDFR Enhanced rank files"
+                          FontSize="16"
+                          FontWeight="SemiBold"
+                          Foreground="{StaticResource TextGrayBrush}"
+                          TextWrapping="Wrap"
+                          TextAlignment="Center"
+                          Margin="20,0,20,16"/>
+
+                <!-- Capabilities -->
+                <Border Background="{StaticResource DarkerBackgroundBrush}"
+                        BorderBrush="{StaticResource AccentCyanBrush}"
+                        BorderThickness="2"
+                        Padding="20"
+                        Margin="20,0,20,0">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Features:"
+                                  FontSize="16"
+                                  FontWeight="SemiBold"
+                                  Foreground="{StaticResource AccentCyanBrush}"/>
+                        <TextBlock Text="• Visual rank hierarchy editor with Rank naming, optional pay bands, XP and Salary editing"
+                                  FontSize="13"
+                                  Foreground="{StaticResource TextGrayBrush}"
+                                  TextWrapping="Wrap"/>
+                        <TextBlock Text="• Real-time validation with instant, clear feedback"
+                                  FontSize="13"
+                                  Foreground="{StaticResource TextGrayBrush}"
+                                  TextWrapping="Wrap"/>
+                        <TextBlock Text="• Station assignment management by rank"
+                                  FontSize="13"
+                                  Foreground="{StaticResource TextGrayBrush}"
+                                  TextWrapping="Wrap"/>
+                        <TextBlock Text="• Vehicle, outfit and uniform assignment per rank and/or per station"
+                                  FontSize="13"
+                                  Foreground="{StaticResource TextGrayBrush}"
+                                  TextWrapping="Wrap"/>
+                        <TextBlock Text="• Multiple profile support"
+                                  FontSize="13"
+                                  Foreground="{StaticResource TextGrayBrush}"
+                                  TextWrapping="Wrap"/>
+                        <TextBlock Text="• Automatic backup before saving and easy restoration of existing backups"
+                                  FontSize="13"
+                                  Foreground="{StaticResource TextGrayBrush}"
+                                  TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- First Time Setup Panel (conditionally visible) -->
+                <Border Background="{StaticResource DarkerBackgroundBrush}"
+                        BorderBrush="{StaticResource AccentCyanBrush}"
+                        BorderThickness="2"
+                        Padding="20"
+                        Margin="20,16,20,0"
+                        IsVisible="{Binding IsFirstTimeSetup}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="First Time Setup"
+                                  FontSize="14"
+                                  FontWeight="SemiBold"
+                                  Foreground="{StaticResource AccentCyanBrush}"/>
+
+                        <TextBlock Text="Please select your GTA V root directory:"
+                                  FontSize="11"
+                                  Foreground="{StaticResource TextWhiteBrush}"/>
+
+                        <TextBox Text="{Binding GtaDirectory}"
+                                Watermark="Enter or paste GTA V directory path..."
+                                Margin="0,4,0,0"/>
+
+                        <Button HorizontalAlignment="Left"
+                               Command="{Binding BrowseCommand}"
+                               MinWidth="120"
+                               Margin="0,4,0,0"
+                               Background="{StaticResource PrimaryDarkBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Image Source="/Resources/Icons/folder-icon.png"
+                                      Width="16"
+                                      Height="16"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Browse..."
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Validation Message -->
+                        <TextBlock Text="{Binding ValidationMessage}"
+                                  FontSize="10"
+                                  Foreground="{Binding ValidationForeground}"
+                                  TextWrapping="Wrap"
+                                  IsVisible="{Binding ShowValidationMessage}"
+                                  Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Skip Welcome Checkbox -->
+                <CheckBox Content="Do not show this page again"
+                         IsChecked="{Binding SkipWelcome}"
+                         HorizontalAlignment="Center"
+                         Margin="0,16,0,0"/>
+
+                <!-- Buttons -->
+                <StackPanel Orientation="Horizontal"
+                           HorizontalAlignment="Center"
+                           Spacing="16"
+                           Margin="0,16,0,32">
+                    <Button Content="Cancel"
+                           Command="{Binding CancelCommand}"
+                           MinWidth="180"
+                           Height="40"
+                           Background="{StaticResource PrimaryDarkBrush}"/>
+                    <Button Content="Proceed"
+                           Command="{Binding ProceedCommand}"
+                           IsEnabled="{Binding CanProceed}"
+                           MinWidth="180"
+                           Height="40"
+                           Background="{StaticResource PrimaryDarkBrush}"/>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="1"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource InputBorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,12">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Copyright -->
+                <TextBlock Grid.Column="0"
+                          FontSize="10"
+                          Foreground="{StaticResource TextGrayBrush}">
+                    <Run Text="© 2025 LSPDFR Enhanced Configurator"/>
+                    <LineBreak/>
+                    <Run Text="Licensed under MIT License"/>
+                </TextBlock>
+
+                <!-- Credits with links -->
+                <StackPanel Grid.Column="1"
+                           Orientation="Vertical"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center">
+                    <TextBlock FontSize="10"
+                              Foreground="{StaticResource TextGrayBrush}"
+                              TextAlignment="Center">
+                        <Run Text="Original LSPDFR Enhanced plugin and logo by Vitus27"/>
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal"
+                               HorizontalAlignment="Center"
+                               Spacing="4">
+                        <TextBlock Text="Visit Website"
+                                  FontSize="10"
+                                  Foreground="{StaticResource AccentCyanBrush}"
+                                  Cursor="Hand"
+                                  TextDecorations="Underline"
+                                  PointerPressed="WebsiteLink_Click"/>
+                        <TextBlock Text="|"
+                                  FontSize="10"
+                                  Foreground="{StaticResource TextGrayBrush}"/>
+                        <TextBlock Text="Download Plugin"
+                                  FontSize="10"
+                                  Foreground="{StaticResource AccentCyanBrush}"
+                                  Cursor="Hand"
+                                  TextDecorations="Underline"
+                                  PointerPressed="PluginLink_Click"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Version -->
+                <TextBlock Grid.Column="2"
+                          Text="Version 1.0.0-MVP"
+                          FontSize="10"
+                          Foreground="{StaticResource TextGrayBrush}"
+                          VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>

@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Resources\Icons\app-icon.ico</ApplicationIcon>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <!-- Application Metadata -->
+    <AssemblyName>LSPDFREnhancedConfigurator</AssemblyName>
+    <Product>LSPDFR Enhanced Configurator</Product>
+    <Copyright>Copyright � 2025 Ryan Morrison</Copyright>
+    <Description>Advanced configuration tool for LSPDFR Enhanced plugin</Description>
+    <Version>1.0.0-BETA</Version>
+    <FileVersion>1.0.0</FileVersion>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+
+    <!-- Build Optimization -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishSingleFile>false</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Resources\Icons\**\*.*" />
+    <AvaloniaResource Include="Resources\Images\**\*.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.2" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.2.2" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.2.2" Condition="'$(Configuration)' == 'Debug'" />
+  </ItemGroup>
+
+  <!-- Exclude WinForms backup from compilation -->
+  <ItemGroup>
+    <Compile Remove="UI_WinForms_Backup\**" />
+    <EmbeddedResource Remove="UI_WinForms_Backup\**" />
+    <None Remove="UI_WinForms_Backup\**" />
+  </ItemGroup>
+
+</Project>

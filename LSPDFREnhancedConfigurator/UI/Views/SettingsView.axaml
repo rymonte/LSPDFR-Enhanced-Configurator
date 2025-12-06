@@ -1,0 +1,229 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+             x:Class="LSPDFREnhancedConfigurator.UI.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="20" Spacing="12" MaxWidth="800">
+
+            <!-- Title -->
+            <Border Background="{StaticResource DarkerBackgroundBrush}"
+                    BorderBrush="{StaticResource AccentCyanBrush}"
+                    BorderThickness="0,0,0,2"
+                    Padding="16,12"
+                    Margin="0,0,0,16">
+                <TextBlock Text="Settings"
+                          Foreground="{StaticResource AccentCyanBrush}"
+                          FontSize="18"
+                          FontWeight="Bold"/>
+            </Border>
+
+            <!-- GTA V Directory Section -->
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                <Image Source="/Resources/Icons/folder-icon.png"
+                      Width="24"
+                      Height="24"
+                      VerticalAlignment="Center"/>
+                <TextBlock Text="GTA V Installation"
+                          FontSize="18"
+                          FontWeight="Bold"
+                          Foreground="{StaticResource AccentCyanBrush}"
+                          VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <Border Background="{StaticResource InputBackgroundBrush}"
+                   BorderBrush="{StaticResource InputBorderBrush}"
+                   BorderThickness="1"
+                   Padding="12"
+                   Margin="20,0,0,0"
+                   CornerRadius="4">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0"
+                                  Text="Current Directory:"
+                                  FontWeight="SemiBold"
+                                  VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1"
+                                  Text="{Binding GtaDirectoryStatus}"
+                                  Foreground="{Binding GtaDirectoryStatusColor}"
+                                  FontWeight="SemiBold"
+                                  FontSize="12"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock Text="{Binding GtaDirectory}"
+                              TextWrapping="Wrap"
+                              FontFamily="Consolas"
+                              Foreground="{StaticResource TextGrayBrush}"/>
+                    <Button Command="{Binding ChangeGtaDirectoryCommand}"
+                           HorizontalAlignment="Left"
+                           Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Image Source="/Resources/Icons/folder-icon.png"
+                                  Width="16"
+                                  Height="16"
+                                  VerticalAlignment="Center"/>
+                            <TextBlock Text="Change Directory"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- Spacer -->
+            <Border Height="30"/>
+
+            <!-- Divider -->
+            <Border Height="2"
+                   Background="{StaticResource AccentCyanBrush}"
+                   Margin="0,0,0,8"/>
+
+            <!-- Application Settings Section -->
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                <Image Source="/Resources/Icons/gear-icon.png"
+                      Width="24"
+                      Height="24"
+                      VerticalAlignment="Center"/>
+                <TextBlock Text="Application Settings"
+                          FontSize="18"
+                          FontWeight="Bold"
+                          Foreground="{StaticResource AccentCyanBrush}"
+                          VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <CheckBox Content="Show welcome screen on start"
+                     IsChecked="{Binding ShowWelcomeScreen}"
+                     Margin="20,0,0,0"/>
+
+            <CheckBox Content="Auto-validate on changes"
+                     IsChecked="{Binding AutoValidate}"
+                     Margin="20,0,0,0"/>
+
+            <CheckBox Content="Show warnings for XP gaps"
+                     IsChecked="{Binding ShowWarnings}"
+                     Margin="20,0,0,0"/>
+
+            <CheckBox Content="Confirm before overwrites"
+                     IsChecked="{Binding ConfirmOverwrites}"
+                     Margin="20,0,0,0"/>
+
+            <CheckBox Content="Auto-save every 5 minutes"
+                     IsChecked="{Binding AutoSave}"
+                     Margin="20,0,0,0"
+                     IsVisible="False"/>
+
+            <!-- Validation Severity -->
+            <StackPanel Orientation="Vertical" Spacing="8" Margin="20,12,0,0">
+                <TextBlock Text="Validation Severity"
+                          Foreground="{StaticResource TextWhiteBrush}"
+                          FontSize="12"
+                          FontWeight="SemiBold"/>
+                <ComboBox ItemsSource="{Binding ValidationSeverityLevels}"
+                         SelectedItem="{Binding SelectedValidationSeverity}"
+                         MinWidth="300"
+                         HorizontalAlignment="Left">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding Description}"
+                                          FontSize="10"
+                                          Foreground="{StaticResource TextGrayBrush}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <!-- Backup Directory -->
+            <StackPanel Orientation="Vertical" Spacing="6" Margin="20,16,0,0">
+                <TextBlock Text="Backup Directory"
+                          Foreground="{StaticResource TextWhiteBrush}"
+                          FontSize="12"
+                          FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding BackupDirectory}"
+                          TextWrapping="Wrap"
+                          FontFamily="Consolas"
+                          FontSize="13"
+                          Foreground="{StaticResource TextWhiteBrush}"
+                          Margin="0,0,0,4"/>
+                <Button Command="{Binding ChangeBackupDirectoryCommand}"
+                       HorizontalAlignment="Left"
+                       Padding="10,6">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Image Source="/Resources/Icons/folder-icon.png"
+                              Width="14"
+                              Height="14"
+                              VerticalAlignment="Center"/>
+                        <TextBlock Text="Change Directory"
+                                  VerticalAlignment="Center"
+                                  FontSize="12"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+            <!-- Spacer -->
+            <Border Height="40"/>
+
+            <!-- Divider -->
+            <Border Height="2"
+                   Background="{StaticResource AccentCyanBrush}"
+                   Margin="0,0,0,8"/>
+
+            <!-- Advanced Settings Section -->
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
+                <Image Source="/Resources/Icons/warning-icon.png"
+                      Width="20"
+                      Height="20"
+                      VerticalAlignment="Center"/>
+                <TextBlock Text="Advanced Settings"
+                          FontSize="16"
+                          FontWeight="Bold"
+                          Foreground="{StaticResource WarningOrangeBrush}"
+                          VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Warning Box -->
+            <Border Background="#28FF9F40"
+                   BorderBrush="{StaticResource WarningOrangeBrush}"
+                   BorderThickness="1"
+                   Padding="12"
+                   Margin="20,0,0,12">
+                <TextBlock TextWrapping="Wrap"
+                          Foreground="{StaticResource WarningOrangeBrush}"
+                          FontSize="12">
+                    <Run Text="⚠ Advanced settings are for users confident with how LSPDFR data files work."/>
+                    <LineBreak/>
+                    <Run Text="You use these settings at your own risk. I am not responsible if you break"/>
+                    <LineBreak/>
+                    <Run Text="your game using these. It is strongly advised you back up key files before"/>
+                    <LineBreak/>
+                    <Run Text="using these features."/>
+                </TextBlock>
+            </Border>
+
+            <CheckBox Content="Show advanced settings"
+                     IsChecked="{Binding ShowAdvancedSettings}"
+                     Foreground="{StaticResource WarningOrangeBrush}"
+                     FontWeight="Bold"
+                     Margin="20,0,0,0"
+                     IsEnabled="False"/>
+
+            <!-- Coming Soon Label -->
+            <Border Background="{StaticResource InputBackgroundBrush}"
+                   BorderBrush="{StaticResource AccentCyanBrush}"
+                   BorderThickness="1"
+                   Padding="12"
+                   Margin="20,8,0,0"
+                   CornerRadius="4">
+                <TextBlock Text="🚧 Coming Soon - Advanced settings functionality is currently under development"
+                          TextWrapping="Wrap"
+                          FontSize="12"
+                          Foreground="{StaticResource TextGrayBrush}"
+                          TextAlignment="Center"/>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

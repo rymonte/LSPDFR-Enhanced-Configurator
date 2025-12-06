@@ -1,0 +1,317 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+             x:Class="LSPDFREnhancedConfigurator.UI.Views.RanksView"
+             x:DataType="vm:RanksViewModel"
+             Focusable="True"
+             PointerPressed="OnBackgroundPointerPressed">
+
+    <Design.DataContext>
+        <vm:RanksViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*"
+          Background="Transparent">
+
+        <!-- Title -->
+        <Border Grid.Row="0"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,0,0,2"
+                Padding="16,12">
+            <TextBlock Text="Rank Hierarchy"
+                      Foreground="{StaticResource AccentCyanBrush}"
+                      FontSize="18"
+                      FontWeight="Bold"/>
+        </Border>
+
+        <!-- Toolbar -->
+        <Border Grid.Row="1"
+                Background="{StaticResource PrimaryDarkBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                    <Button Content="Add Rank"
+                           Command="{Binding AddRankCommand}"
+                           MinWidth="100"/>
+                    <Button Content="Add Pay Band"
+                           Command="{Binding AddPayBandCommand}"
+                           MinWidth="120"/>
+                </StackPanel>
+
+                <Button Grid.Column="2"
+                       Command="{Binding RemoveAllRanksCommand}"
+                       MinWidth="140"
+                       Background="#D32F2F"
+                       Foreground="White">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Image Source="/Resources/Icons/delete-icon.png"
+                              Width="16"
+                              Height="16"
+                              VerticalAlignment="Center"/>
+                        <TextBlock Text="Remove All Ranks"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Main Content: Split View -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="200"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="350" MinWidth="250" MaxWidth="450"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- TreeView Panel -->
+            <Border Grid.Column="0"
+                    Background="{StaticResource DarkerBackgroundBrush}"
+                    BorderBrush="{StaticResource AccentCyanBrush}"
+                    BorderThickness="2"
+                    Margin="8">
+                <TreeView Name="RanksTreeView"
+                         ItemsSource="{Binding RankTreeItems}"
+                         SelectedItem="{Binding SelectedTreeItem}"
+                         Background="Transparent"
+                         Padding="8"
+                         PointerPressed="OnTreeViewPointerPressed">
+                    <TreeView.Styles>
+                        <Style Selector="TreeViewItem" x:DataType="vm:RankTreeItemViewModel">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                        </Style>
+                    </TreeView.Styles>
+                    <TreeView.ItemTemplate>
+                        <TreeDataTemplate ItemsSource="{Binding Children}" DataType="vm:RankTreeItemViewModel">
+                            <Border Background="{Binding ValidationBackgroundBrush}"
+                                    CornerRadius="3"
+                                    Padding="4,2"
+                                    HorizontalAlignment="Stretch"
+                                    ToolTip.Tip="{Binding ValidationTooltip}">
+                                <TextBlock Text="{Binding DisplayText}"
+                                          FontSize="14"
+                                          DoubleTapped="OnTreeItemDoubleTapped"
+                                          VerticalAlignment="Center"/>
+                            </Border>
+                        </TreeDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </Border>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1"
+                         Background="{StaticResource AccentCyanBrush}"
+                         ResizeDirection="Columns"/>
+
+            <!-- Details Panel -->
+            <Border Grid.Column="2"
+                    Background="{StaticResource PrimaryDarkBrush}"
+                    Padding="12"
+                    Margin="0,8,8,8">
+                <ScrollViewer>
+                    <StackPanel Spacing="8">
+
+                        <!-- Name (Editable for parent ranks) -->
+                        <TextBlock Text="Name:"
+                                  Foreground="{StaticResource TextWhiteBrush}"
+                                  IsVisible="{Binding CanEditRankName}"/>
+                        <TextBox Text="{Binding RankName}"
+                                MaxLength="64"
+                                MaxWidth="300"
+                                HorizontalAlignment="Left"
+                                Watermark="Enter rank name..."
+                                IsVisible="{Binding CanEditRankName}"
+                                BorderBrush="{Binding NameBorderBrush}"
+                                BorderThickness="{Binding NameBorderThickness}"
+                                LostFocus="OnTextBoxLostFocus"/>
+                        <StackPanel Orientation="Horizontal"
+                                   Spacing="6"
+                                   Margin="0,-4,0,0"
+                                   IsVisible="{Binding CanEditRankName}">
+                            <Image Source="/Resources/Icons/warning-icon.png"
+                                  Width="14"
+                                  Height="14"
+                                  VerticalAlignment="Center"
+                                  IsVisible="{Binding NameValidation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <TextBlock Text="{Binding NameValidation}"
+                                      Foreground="{StaticResource WarningOrangeBrush}"
+                                      FontSize="11"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Name (Read-only for pay bands) -->
+                        <TextBlock Text="Pay Band Name:"
+                                  Foreground="{StaticResource TextWhiteBrush}"
+                                  IsVisible="{Binding IsPayBandSelected}"/>
+                        <TextBlock Text="{Binding RankName}"
+                                  Foreground="{StaticResource TextWhiteBrush}"
+                                  FontWeight="SemiBold"
+                                  MaxWidth="300"
+                                  HorizontalAlignment="Left"
+                                  IsVisible="{Binding IsPayBandSelected}"/>
+
+                        <!-- Required Points (conditionally visible) -->
+                        <TextBlock Text="Required Points:"
+                                  Foreground="{StaticResource TextWhiteBrush}"
+                                  IsVisible="{Binding ShowXpSalaryFields}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                   IsVisible="{Binding ShowXpSalaryFields}">
+                            <NumericUpDown Value="{Binding RequiredPoints}"
+                                          Minimum="0"
+                                          Maximum="999999"
+                                          Width="100"
+                                          ShowButtonSpinner="False"
+                                          BorderBrush="{Binding RequiredPointsBorderBrush}"
+                                          BorderThickness="{Binding RequiredPointsBorderThickness}"
+                                          LostFocus="OnTextBoxLostFocus"/>
+                            <Image Source="/Resources/Icons/error-icon.png"
+                                  Width="14"
+                                  Height="14"
+                                  VerticalAlignment="Center"
+                                  IsVisible="{Binding RequiredPointsValidation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <TextBlock Text="{Binding RequiredPointsValidation}"
+                                      Foreground="{StaticResource ErrorRedBrush}"
+                                      FontSize="11"
+                                      VerticalAlignment="Center"
+                                      TextWrapping="Wrap"
+                                      MaxWidth="130"/>
+                        </StackPanel>
+
+                        <!-- Salary (conditionally visible) -->
+                        <TextBlock Text="Salary ($):"
+                                  Foreground="{StaticResource TextWhiteBrush}"
+                                  IsVisible="{Binding ShowXpSalaryFields}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                   IsVisible="{Binding ShowXpSalaryFields}">
+                            <NumericUpDown Value="{Binding Salary}"
+                                          Minimum="0"
+                                          Maximum="999999"
+                                          Width="100"
+                                          ShowButtonSpinner="False"
+                                          BorderBrush="{Binding SalaryBorderBrush}"
+                                          BorderThickness="{Binding SalaryBorderThickness}"
+                                          LostFocus="OnTextBoxLostFocus"/>
+                            <Image Source="/Resources/Icons/error-icon.png"
+                                  Width="14"
+                                  Height="14"
+                                  VerticalAlignment="Center"
+                                  IsVisible="{Binding SalaryValidation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <TextBlock Text="{Binding SalaryValidation}"
+                                      Foreground="{StaticResource ErrorRedBrush}"
+                                      FontSize="11"
+                                      VerticalAlignment="Center"
+                                      TextWrapping="Wrap"
+                                      MaxWidth="130"/>
+                        </StackPanel>
+
+                        <!-- Advisories -->
+                        <StackPanel Orientation="Horizontal"
+                                   Spacing="6"
+                                   Margin="0,4,0,0"
+                                   IsVisible="{Binding ShowXpSalaryFields}">
+                            <Image Source="/Resources/Icons/warning-icon.png"
+                                  Width="14"
+                                  Height="14"
+                                  VerticalAlignment="Top"
+                                  Margin="0,2,0,0"
+                                  IsVisible="{Binding SalaryAdvisory, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <TextBlock Text="{Binding SalaryAdvisory}"
+                                      Foreground="{StaticResource WarningOrangeBrush}"
+                                      FontSize="11"
+                                      TextWrapping="Wrap"
+                                      MaxWidth="260"/>
+                        </StackPanel>
+
+                        <!-- Separator -->
+                        <Border Height="1"
+                               Background="{StaticResource AccentCyanBrush}"
+                               Margin="0,8"
+                               IsVisible="{Binding ShowXpSalaryFields}"/>
+
+                        <!-- Action Buttons -->
+                        <Button Content="Promote to Parent"
+                               Command="{Binding PromoteCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="36"
+                               Padding="16,8"
+                               IsVisible="{Binding CanPromoteToParent}"/>
+
+                        <Button Command="{Binding CloneCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="36"
+                               Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                <Image Source="/Resources/Icons/clone-icon.png"
+                                      Width="14"
+                                      Height="14"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Clone"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding RemoveCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="36"
+                               Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                <Image Source="/Resources/Icons/delete-icon.png"
+                                      Width="16"
+                                      Height="16"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Remove"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding MoveUpCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="36"
+                               Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                <Image Source="/Resources/Icons/chevron-up.png"
+                                      Width="14"
+                                      Height="14"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Move Up"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding MoveDownCommand}"
+                               HorizontalAlignment="Center"
+                               MinWidth="180"
+                               Height="36"
+                               Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                <Image Source="/Resources/Icons/chevron-down.png"
+                                      Width="14"
+                                      Height="14"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Move Down"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Validation Message -->
+                        <TextBlock Text="{Binding ValidationMessage}"
+                                  Foreground="{StaticResource WarningOrangeBrush}"
+                                  FontWeight="Bold"
+                                  FontSize="12"
+                                  TextWrapping="Wrap"
+                                  Margin="0,8,0,0"/>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+        </Grid>
+
+    </Grid>
+</UserControl>

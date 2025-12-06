@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+        x:Class="LSPDFREnhancedConfigurator.UI.Views.ValidationWarningDialog"
+        x:DataType="vm:ValidationWarningDialogViewModel"
+        Title="Validation Issues Detected"
+        Width="700" Height="550"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <Design.DataContext>
+        <vm:ValidationWarningDialogViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
+
+        <!-- Title -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
+            <Image Source="/Resources/Icons/warning-icon.png"
+                  Width="24"
+                  Height="24"
+                  VerticalAlignment="Center"/>
+            <TextBlock Text="Issues Detected in Ranks.xml"
+                      FontSize="18"
+                      FontWeight="Bold"
+                      Foreground="{StaticResource WarningOrangeBrush}"
+                      VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Subtitle -->
+        <TextBlock Grid.Row="1"
+                  Text="The following issues were found when loading your Ranks.xml file:"
+                  FontSize="14"
+                  Foreground="{StaticResource TextWhiteBrush}"
+                  TextWrapping="Wrap"
+                  Margin="0,0,0,12"/>
+
+        <!-- Issues TextBox -->
+        <Border Grid.Row="2"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource WarningOrangeBrush}"
+                BorderThickness="1"
+                Margin="0,0,0,20">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TextBox Text="{Binding IssuesText}"
+                        FontFamily="Consolas,Courier New,monospace"
+                        FontSize="12"
+                        Background="{StaticResource DarkerBackgroundBrush}"
+                        BorderThickness="0"
+                        IsReadOnly="True"
+                        TextWrapping="Wrap"
+                        AcceptsReturn="True"
+                        Padding="8"/>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Buttons -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,12,*">
+            <Button Grid.Column="0"
+                   Content="View and Fix in UI"
+                   HorizontalAlignment="Stretch"
+                   Height="40"
+                   FontSize="14"
+                   FontWeight="Bold"
+                   Command="{Binding ViewAndFixCommand}"
+                   Click="ViewAndFixButton_Click"/>
+            <Button Grid.Column="2"
+                   Content="Continue Anyway"
+                   HorizontalAlignment="Stretch"
+                   Height="40"
+                   FontSize="14"
+                   Command="{Binding ContinueAnywayCommand}"
+                   Click="ContinueAnywayButton_Click"/>
+        </Grid>
+
+    </Grid>
+</Window>

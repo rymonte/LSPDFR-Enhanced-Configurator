@@ -1,0 +1,79 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+        x:Class="LSPDFREnhancedConfigurator.UI.Views.ProfileSelectionDialog"
+        x:DataType="vm:ProfileSelectionDialogViewModel"
+        Title="Select Profile"
+        Width="500" Height="450"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <Design.DataContext>
+        <vm:ProfileSelectionDialogViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
+
+        <!-- Title -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+            <Image Source="/Resources/Icons/gear-icon.png"
+                  Width="24"
+                  Height="24"
+                  VerticalAlignment="Center"/>
+            <TextBlock Text="Select LSPDFR Enhanced Profile"
+                      FontSize="18"
+                      FontWeight="Bold"
+                      Foreground="{StaticResource AccentCyanBrush}"
+                      VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Instructions -->
+        <TextBlock Grid.Row="1"
+                  Text="Choose which profile you want to edit:"
+                  FontSize="14"
+                  Foreground="{StaticResource TextGrayBrush}"
+                  Margin="0,0,0,12"/>
+
+        <!-- Profiles ListBox -->
+        <Border Grid.Row="2"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="1"
+                Margin="0,0,0,20">
+            <ListBox ItemsSource="{Binding Profiles}"
+                    SelectedItem="{Binding SelectedProfile}"
+                    Background="{StaticResource DarkerBackgroundBrush}"
+                    BorderThickness="0"
+                    DoubleTapped="ListBox_DoubleTapped">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="x:String">
+                        <TextBlock Text="{Binding}"
+                                  FontSize="14"
+                                  Padding="8,4"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!-- Buttons -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,12,*">
+            <Button Grid.Column="0"
+                   Content="Cancel"
+                   HorizontalAlignment="Stretch"
+                   Height="40"
+                   FontSize="14"
+                   Background="{StaticResource PrimaryDarkBrush}"
+                   Click="CancelButton_Click"/>
+            <Button Grid.Column="2"
+                   Content="Select"
+                   HorizontalAlignment="Stretch"
+                   Height="40"
+                   FontSize="14"
+                   FontWeight="Bold"
+                   Background="{StaticResource PrimaryDarkBrush}"
+                   Command="{Binding SelectCommand}"
+                   Click="SelectButton_Click"/>
+        </Grid>
+
+    </Grid>
+</Window>

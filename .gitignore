@@ -1,0 +1,78 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Development notes and documentation  
+*.md
+!README.md
+
+# Local settings and PII
+settings.ini
+appsettings.Development.json
+launchSettings.json
+
+# Sample data that might contain PII
+sample-sources/
+
+# Build artifacts
+target/
+*.nupkg
+*.snupkg
+*.log
+
+# NuGet
+packages/
+.nuget/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+
+# Temporary files
+*.tmp
+*.temp
+*~
+nul
+
+# Maven (if applicable)
+pom.xml
+mvnw
+mvnw.cmd
+
+# Scripts with potential local paths
+*.ps1
+*.bat
+
+# Claude local settings
+.claude/
+
+# Environment variables
+.env
+
+# Tests (need to be redone)
+LSPDFREnhancedConfigurator.Tests/

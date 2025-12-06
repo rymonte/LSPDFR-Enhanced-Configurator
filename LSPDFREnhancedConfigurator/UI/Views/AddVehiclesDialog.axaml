@@ -1,0 +1,220 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+        x:Class="LSPDFREnhancedConfigurator.UI.Views.AddVehiclesDialog"
+        x:DataType="vm:AddVehiclesDialogViewModel"
+        Title="Vehicle Selection"
+        Width="900" Height="600"
+        MinWidth="800" MinHeight="500"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Header with context title -->
+        <Border Grid.Row="0"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,0,0,2"
+                Padding="16,12">
+            <TextBlock Text="{Binding Title}"
+                      FontSize="16"
+                      FontWeight="SemiBold"
+                      Foreground="{StaticResource TextWhiteBrush}"
+                      HorizontalAlignment="Center"/>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1" ColumnDefinitions="200,4,*">
+
+            <!-- Left Panel: Agency Filters -->
+            <Border Grid.Column="0"
+                    Background="{StaticResource DarkerBackgroundBrush}"
+                    BorderBrush="{StaticResource AccentCyanBrush}"
+                    BorderThickness="0,0,1,0"
+                    Padding="12">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top"
+                              Text="Filter by Agency"
+                              FontSize="14"
+                              FontWeight="Bold"
+                              Foreground="{StaticResource AccentCyanBrush}"
+                              Margin="0,0,0,8"/>
+
+                    <!-- Agency Search Box -->
+                    <TextBox DockPanel.Dock="Top"
+                            Text="{Binding AgencySearchText}"
+                            Watermark="Search agencies..."
+                            Margin="0,0,0,12"/>
+
+                    <!-- Station Agency Filter Button -->
+                    <Button DockPanel.Dock="Top"
+                            Command="{Binding FilterByStationAgencyCommand}"
+                            IsVisible="{Binding ShowStationAgencyFilter}"
+                            HorizontalAlignment="Stretch"
+                            Margin="0,0,0,12"
+                            Padding="8"
+                            HorizontalContentAlignment="Center">
+                        <TextBlock Text="{Binding StationAgencyFilterButtonText}"
+                                  TextWrapping="Wrap"
+                                  TextAlignment="Center"/>
+                    </Button>
+
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                 VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding AgencyFilters}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- DataType omitted - nested class AgencyFilterItem causes ambiguity -->
+                                    <CheckBox IsChecked="{Binding IsChecked}"
+                                             Margin="0,4">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding ShortName}"
+                                                      FontWeight="Bold"
+                                                      FontSize="12"/>
+                                            <TextBlock Text="{Binding FullName}"
+                                                      FontSize="10"
+                                                      Foreground="{StaticResource TextGrayBrush}"
+                                                      TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- Right Panel: Search and Vehicle List -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto">
+
+                <!-- Search Box -->
+                <Border Grid.Row="0"
+                        Background="{StaticResource DarkerBackgroundBrush}"
+                        BorderBrush="{StaticResource AccentCyanBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="12">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Left"
+                                  Text="Search:"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"
+                                  Foreground="{StaticResource TextWhiteBrush}"/>
+                        <TextBox Text="{Binding SearchText}"
+                                Watermark="Search by name or model..."
+                                VerticalAlignment="Center"/>
+                    </DockPanel>
+                </Border>
+
+                <!-- Vehicle List -->
+                <DataGrid Grid.Row="1"
+                         ItemsSource="{Binding VehicleItems}"
+                         AutoGenerateColumns="False"
+                         CanUserResizeColumns="True"
+                         CanUserSortColumns="True"
+                         GridLinesVisibility="All"
+                         IsReadOnly="False"
+                         SelectionMode="Extended"
+                         Background="{StaticResource DarkerBackgroundBrush}"
+                         Foreground="{StaticResource TextWhiteBrush}"
+                         BorderBrush="{StaticResource AccentCyanBrush}"
+                         BorderThickness="2"
+                         RowHeight="32"
+                         HeadersVisibility="Column"
+                         Margin="8"
+                         HorizontalGridLinesBrush="{StaticResource InputBorderBrush}"
+                         VerticalGridLinesBrush="{StaticResource InputBorderBrush}">
+
+                    <DataGrid.Styles>
+                        <Style Selector="DataGridRow">
+                            <Setter Property="Background" Value="{StaticResource DarkerBackgroundBrush}"/>
+                        </Style>
+                        <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+                            <Setter Property="Fill" Value="{StaticResource PrimaryDarkBrush}"/>
+                        </Style>
+                        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+                            <Setter Property="Fill" Value="{StaticResource AccentCyanBrush}"/>
+                            <Setter Property="Opacity" Value="0.3"/>
+                        </Style>
+                        <Style Selector="DataGridCell">
+                            <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+                        </Style>
+                    </DataGrid.Styles>
+
+                    <DataGrid.Columns>
+                        <!-- Checkbox Column -->
+                        <DataGridTemplateColumn Header="Select" Width="80" IsReadOnly="False" CanUserSort="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:VehicleItemViewModel">
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Agency Column -->
+                        <DataGridTextColumn Header="Agency"
+                                          Binding="{Binding Agencies}"
+                                          Width="120"
+                                          IsReadOnly="True"
+                                          CanUserSort="True"/>
+
+                        <!-- Vehicle Name Column -->
+                        <DataGridTextColumn Header="Vehicle Name"
+                                          Binding="{Binding DisplayName}"
+                                          Width="2*"
+                                          IsReadOnly="True"
+                                          CanUserSort="True"/>
+
+                        <!-- Model Name Column -->
+                        <DataGridTextColumn Header="Model Name"
+                                          Binding="{Binding Model}"
+                                          Width="*"
+                                          IsReadOnly="True"
+                                          CanUserSort="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Status Bar -->
+                <Border Grid.Row="2"
+                        Background="{StaticResource DarkerBackgroundBrush}"
+                        BorderBrush="{StaticResource AccentCyanBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="12,8">
+                    <TextBlock Text="{Binding StatusText}"
+                              Foreground="{StaticResource TextWhiteBrush}"
+                              FontSize="12"/>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Bottom Button Panel -->
+        <Border Grid.Row="2"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12">
+            <StackPanel Orientation="Horizontal"
+                       HorizontalAlignment="Right"
+                       Spacing="12">
+                <Button Command="{Binding AddSelectedCommand}"
+                       MinWidth="140"
+                       Click="AddSelectedButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Image Source="/Resources/Icons/success-icon.png"
+                              Width="16"
+                              Height="16"
+                              VerticalAlignment="Center"/>
+                        <TextBlock Text="Add Selected"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Content="Cancel"
+                       MinWidth="100"
+                       Click="CancelButton_Click"/>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</Window>

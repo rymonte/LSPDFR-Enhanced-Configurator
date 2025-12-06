@@ -1,0 +1,81 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+        xmlns:models="using:LSPDFREnhancedConfigurator.Models"
+        x:Class="LSPDFREnhancedConfigurator.UI.Views.CopyFromRankDialog"
+        x:DataType="vm:CopyFromRankDialogViewModel"
+        Title="Copy From Rank"
+        Width="500" Height="400"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False">
+
+    <Design.DataContext>
+        <vm:CopyFromRankDialogViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Background="{StaticResource PrimaryDarkBrush}"
+                Padding="16,12">
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding Title}"
+                          FontSize="16"
+                          FontWeight="Bold"
+                          Foreground="{StaticResource AccentCyanBrush}"/>
+                <TextBlock Text="{Binding Description}"
+                          FontSize="12"
+                          Foreground="{StaticResource TextGrayBrush}"
+                          TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Rank List -->
+        <Border Grid.Row="1"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                Padding="16">
+            <Grid RowDefinitions="Auto,*">
+                <TextBlock Grid.Row="0"
+                          Text="Select source rank:"
+                          FontSize="14"
+                          Foreground="{StaticResource TextWhiteBrush}"
+                          Margin="0,0,0,8"/>
+
+                <ListBox Grid.Row="1"
+                        ItemsSource="{Binding AvailableRanks}"
+                        SelectedItem="{Binding SelectedRank}"
+                        Background="Transparent"
+                        BorderBrush="{StaticResource AccentCyanBrush}"
+                        BorderThickness="1">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="models:RankHierarchy">
+                            <TextBlock Text="{Binding Name}"
+                                      Padding="4"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <!-- Buttons -->
+        <Border Grid.Row="2"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,12">
+            <StackPanel Orientation="Horizontal"
+                       HorizontalAlignment="Right"
+                       Spacing="12">
+                <Button Content="Cancel"
+                       MinWidth="100"
+                       Click="CancelButton_Click"/>
+                <Button Content="Copy"
+                       MinWidth="100"
+                       IsEnabled="{Binding CanCopy}"
+                       Click="CopyButton_Click"/>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</Window>

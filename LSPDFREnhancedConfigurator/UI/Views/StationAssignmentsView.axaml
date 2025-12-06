@@ -1,0 +1,391 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:LSPDFREnhancedConfigurator.UI.ViewModels"
+             xmlns:models="using:LSPDFREnhancedConfigurator.Models"
+             xmlns:converters="using:LSPDFREnhancedConfigurator.UI.Converters"
+             x:Class="LSPDFREnhancedConfigurator.UI.Views.StationAssignmentsView"
+             x:DataType="vm:StationAssignmentsViewModel"
+             Focusable="True"
+             PointerPressed="OnBackgroundPointerPressed">
+
+    <UserControl.Resources>
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <converters:BoolToValidationBackgroundConverter x:Key="BoolToValidationBackgroundConverter"/>
+        <converters:BoolToValidationTooltipConverter x:Key="BoolToValidationTooltipConverter"/>
+    </UserControl.Resources>
+
+    <Design.DataContext>
+        <vm:StationAssignmentsViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*"
+          Background="Transparent">
+
+        <!-- Title -->
+        <Border Grid.Row="0"
+                Background="{StaticResource DarkerBackgroundBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,0,0,2"
+                Padding="16,12">
+            <TextBlock Text="Station Assignments"
+                      Foreground="{StaticResource AccentCyanBrush}"
+                      FontSize="18"
+                      FontWeight="Bold"/>
+        </Border>
+
+        <!-- Top Panel: Rank Selector -->
+        <Border Grid.Row="1"
+                Background="{StaticResource PrimaryDarkBrush}"
+                BorderBrush="{StaticResource AccentCyanBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <TextBlock Text="Select Rank:"
+                          Foreground="{StaticResource TextWhiteBrush}"
+                          VerticalAlignment="Center"
+                          FontSize="14"/>
+                <ComboBox ItemsSource="{Binding RankList}"
+                         SelectedItem="{Binding SelectedRank}"
+                         MinWidth="300"
+                         PlaceholderText="Select a rank...">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate DataType="models:RankHierarchy">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                <!-- Validation icons will be added via RankListItemViewModel in future iteration -->
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content: Three-column layout with filters -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" MinWidth="250"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="140"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="2*" MinWidth="250"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="*" MinWidth="220"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Assigned Stations (Left) -->
+            <Border Grid.Column="0"
+                    Background="{StaticResource DarkerBackgroundBrush}"
+                    BorderBrush="{StaticResource AccentCyanBrush}"
+                    BorderThickness="2"
+                    Margin="8">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0"
+                              Text="Assigned Stations:"
+                              Foreground="{StaticResource TextWhiteBrush}"
+                              FontSize="14"
+                              FontWeight="SemiBold"
+                              Margin="8,8,8,4"/>
+
+                    <ListBox Grid.Row="1"
+                            ItemsSource="{Binding AssignedStations}"
+                            SelectedItems="{Binding SelectedAssignedStations}"
+                            SelectionMode="Multiple"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Margin="8,4,8,8"
+                            DoubleTapped="OnAssignedStationsDoubleTapped">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="MinHeight" Value="24"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            </Style>
+                        </ListBox.Styles>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="models:StationAssignment">
+                                <Border Background="{Binding IsValid, Converter={StaticResource BoolToValidationBackgroundConverter}}"
+                                        CornerRadius="3"
+                                        Padding="4,2"
+                                        HorizontalAlignment="Stretch"
+                                        ToolTip.Tip="{Binding IsValid, Converter={StaticResource BoolToValidationTooltipConverter}}">
+                                    <TextBlock Text="{Binding DisplayName}"
+                                              FontSize="12"/>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1"
+                         Width="4"
+                         Background="Transparent"
+                         ResizeDirection="Columns"/>
+
+            <!-- Middle Buttons -->
+            <ScrollViewer Grid.Column="2"
+                         HorizontalScrollBarVisibility="Disabled"
+                         VerticalScrollBarVisibility="Auto">
+            <StackPanel Orientation="Vertical"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Spacing="8"
+                       Margin="8">
+                <Button Command="{Binding AddAllStationsCommand}"
+                       Width="120"
+                       Height="30">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Image Source="/Resources/Icons/double-chevron-left.png"
+                              Width="14"
+                              Height="14"
+                              VerticalAlignment="Center"/>
+                        <TextBlock Text="Add All"
+                                  VerticalAlignment="Center"
+                                  FontSize="11"/>
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding AddStationsCommand}"
+                       Width="120"
+                       Height="30">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Image Source="/Resources/Icons/chevron-left.png"
+                              Width="14"
+                              Height="14"
+                              VerticalAlignment="Center"/>
+                        <TextBlock Text="Add"
+                                  VerticalAlignment="Center"
+                                  FontSize="11"/>
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding RemoveStationsCommand}"
+                       Width="120"
+                       Height="30"
+                       IsEnabled="{Binding RemoveButtonEnabled}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="Remove"
+                                  VerticalAlignment="Center"
+                                  FontSize="11"/>
+                        <Image Source="/Resources/Icons/chevron-right.png"
+                              Width="14"
+                              Height="14"
+                              VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding RemoveAllStationsCommand}"
+                       Width="120"
+                       Height="30">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="Remove All"
+                                  VerticalAlignment="Center"
+                                  FontSize="11"/>
+                        <Image Source="/Resources/Icons/double-chevron-right.png"
+                              Width="14"
+                              Height="14"
+                              VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Divider -->
+                <Border Height="1"
+                       Background="{StaticResource AccentCyanBrush}"
+                       Margin="16,16,16,16"
+                       Opacity="0.3"/>
+
+                <!-- Copy From Section -->
+                <TextBlock Text="Copy From Rank:"
+                          Foreground="{StaticResource TextWhiteBrush}"
+                          FontSize="11"
+                          HorizontalAlignment="Center"
+                          Margin="0,0,0,4"/>
+
+                <ComboBox ItemsSource="{Binding CopyFromRankList}"
+                         SelectedItem="{Binding SelectedCopyFromRank}"
+                         Width="120"
+                         PlaceholderText="Select...">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate DataType="models:RankHierarchy">
+                            <TextBlock Text="{Binding Name}" FontSize="11"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <Button Command="{Binding CopyStationsCommand}"
+                       Width="120"
+                       Height="30"
+                       Margin="0,4,0,0">
+                    <TextBlock Text="Copy From"
+                              VerticalAlignment="Center"
+                              FontSize="11"/>
+                </Button>
+
+                <!-- Copy From Warning -->
+                <Border IsVisible="{Binding ShowCopyFromWarning}"
+                        Background="#28FF9F40"
+                        BorderBrush="{StaticResource WarningOrangeBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="8,6"
+                        Margin="0,8,0,0"
+                        Width="120">
+                    <TextBlock Text="⚠️ This will add stations from the source rank to the current rank"
+                              Foreground="{StaticResource WarningOrangeBrush}"
+                              FontSize="10"
+                              TextWrapping="Wrap"
+                              TextAlignment="Center"/>
+                </Border>
+
+                <!-- Spacer -->
+                <Border Height="20"/>
+
+                <!-- Copy To Section -->
+                <TextBlock Text="Copy To Rank:"
+                          Foreground="{StaticResource TextWhiteBrush}"
+                          FontSize="11"
+                          HorizontalAlignment="Center"
+                          Margin="0,0,0,4"/>
+
+                <ComboBox ItemsSource="{Binding CopyToRankList}"
+                         SelectedItem="{Binding SelectedCopyToRank}"
+                         Width="120"
+                         PlaceholderText="Select...">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate DataType="models:RankHierarchy">
+                            <TextBlock Text="{Binding Name}" FontSize="11"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <Button Command="{Binding CopyStationsToRankCommand}"
+                       Width="120"
+                       Height="30"
+                       Margin="0,4,0,0">
+                    <TextBlock Text="Copy To"
+                              VerticalAlignment="Center"
+                              FontSize="11"/>
+                </Button>
+
+                <!-- Copy To Warning -->
+                <Border IsVisible="{Binding ShowCopyToWarning}"
+                        Background="#28FF9F40"
+                        BorderBrush="{StaticResource WarningOrangeBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="8,6"
+                        Margin="0,8,0,0"
+                        Width="120">
+                    <TextBlock Text="⚠️ This will overwrite the target rank's station assignments"
+                              Foreground="{StaticResource WarningOrangeBrush}"
+                              FontSize="10"
+                              TextWrapping="Wrap"
+                              TextAlignment="Center"/>
+                </Border>
+            </StackPanel>
+            </ScrollViewer>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="3"
+                         Width="4"
+                         Background="Transparent"
+                         ResizeDirection="Columns"/>
+
+            <!-- Available Stations (Center) -->
+            <Border Grid.Column="4"
+                    Background="{StaticResource DarkerBackgroundBrush}"
+                    BorderBrush="{StaticResource AccentCyanBrush}"
+                    BorderThickness="2"
+                    Margin="8,8,4,8">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0"
+                              Text="Available Stations:"
+                              Foreground="{StaticResource TextWhiteBrush}"
+                              FontSize="14"
+                              FontWeight="SemiBold"
+                              Margin="8,8,8,4"/>
+
+                    <ListBox Grid.Row="1"
+                            ItemsSource="{Binding AvailableStations}"
+                            SelectedItems="{Binding SelectedAvailableStations}"
+                            SelectionMode="Multiple"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Margin="8,4,8,8"
+                            DoubleTapped="OnAvailableStationsDoubleTapped">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="4,2"/>
+                                <Setter Property="MinHeight" Value="24"/>
+                            </Style>
+                        </ListBox.Styles>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="models:Station">
+                                <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="5"
+                         Width="4"
+                         Background="Transparent"
+                         ResizeDirection="Columns"/>
+
+            <!-- Filters Panel (Right) -->
+            <Border Grid.Column="6"
+                    Background="{StaticResource PrimaryDarkBrush}"
+                    Padding="12"
+                    Margin="4,8,8,8">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+
+                    <!-- Search Section -->
+                    <TextBlock Grid.Row="0"
+                              Text="Search by station name:"
+                              Foreground="{StaticResource TextWhiteBrush}"
+                              FontSize="12"
+                              Margin="0,0,0,4"/>
+
+                    <TextBox Grid.Row="1"
+                            Text="{Binding SearchText}"
+                            Watermark="Type to search..."
+                            Margin="0,0,0,12"/>
+
+                    <!-- Filter Label -->
+                    <TextBlock Grid.Row="2"
+                              Text="Filter by Agency:"
+                              Foreground="{StaticResource TextWhiteBrush}"
+                              FontSize="12"
+                              Margin="0,0,0,4"/>
+
+                    <!-- Spacer -->
+                    <Border Grid.Row="3" Height="4"/>
+
+                    <!-- Agency Filters -->
+                    <ScrollViewer Grid.Row="4">
+                        <ItemsControl ItemsSource="{Binding AgencyFilters}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- DataType omitted - nested class AgencyFilterItem causes ambiguity -->
+                                    <CheckBox Content="{Binding DisplayText}"
+                                             IsChecked="{Binding IsChecked}"
+                                             Margin="0,2"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Clear Filter Button -->
+                    <Button Grid.Row="5"
+                           Content="Clear Filter"
+                           Command="{Binding ClearFiltersCommand}"
+                           HorizontalAlignment="Stretch"
+                           Margin="0,8,0,0"/>
+                </Grid>
+            </Border>
+
+        </Grid>
+
+
+    </Grid>
+</UserControl>

@@ -1,0 +1,462 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- LSPDFR Enhanced Color Resources -->
+    <Style>
+        <Style.Resources>
+            <!-- Primary Colors -->
+            <Color x:Key="PrimaryDark">#00101C</Color>
+            <Color x:Key="AccentCyan">#00ADEA</Color>
+            <Color x:Key="LightCyan">#33C2F2</Color>
+            <Color x:Key="DarkCyan">#008ABB</Color>
+            <Color x:Key="DarkerBackground">#000A12</Color>
+
+            <!-- Text Colors -->
+            <Color x:Key="TextWhite">#E9EAEA</Color>
+            <Color x:Key="TextGray">#B4B4B4</Color>
+            <Color x:Key="TextBlack">#1E1E1E</Color>
+
+            <!-- Input Field Colors -->
+            <Color x:Key="InputBackground">#001928</Color>
+            <Color x:Key="InputBorder">#00ADEA</Color>
+            <Color x:Key="InputDisabled">#000A12</Color>
+
+            <!-- Status Colors -->
+            <Color x:Key="ErrorRed">#DC3545</Color>
+            <Color x:Key="WarningOrange">#FF9F40</Color>
+            <Color x:Key="SuccessGreen">#28A745</Color>
+            <Color x:Key="DangerRed">#DC3545</Color>
+            <Color x:Key="HazardOrange">#FF9F40</Color>
+
+            <!-- Brushes -->
+            <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{StaticResource PrimaryDark}"/>
+            <SolidColorBrush x:Key="AccentCyanBrush" Color="{StaticResource AccentCyan}"/>
+            <SolidColorBrush x:Key="LightCyanBrush" Color="{StaticResource LightCyan}"/>
+            <SolidColorBrush x:Key="DarkCyanBrush" Color="{StaticResource DarkCyan}"/>
+            <SolidColorBrush x:Key="DarkerBackgroundBrush" Color="{StaticResource DarkerBackground}"/>
+            <SolidColorBrush x:Key="TextWhiteBrush" Color="{StaticResource TextWhite}"/>
+            <SolidColorBrush x:Key="TextGrayBrush" Color="{StaticResource TextGray}"/>
+            <SolidColorBrush x:Key="InputBackgroundBrush" Color="{StaticResource InputBackground}"/>
+            <SolidColorBrush x:Key="InputBorderBrush" Color="{StaticResource InputBorder}"/>
+            <SolidColorBrush x:Key="ErrorRedBrush" Color="{StaticResource ErrorRed}"/>
+            <SolidColorBrush x:Key="WarningOrangeBrush" Color="{StaticResource WarningOrange}"/>
+            <SolidColorBrush x:Key="SuccessGreenBrush" Color="{StaticResource SuccessGreen}"/>
+            <SolidColorBrush x:Key="DangerRedBrush" Color="{StaticResource DangerRed}"/>
+            <SolidColorBrush x:Key="HazardOrangeBrush" Color="{StaticResource HazardOrange}"/>
+        </Style.Resources>
+    </Style>
+
+    <!-- Window Style -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI,Arial,sans-serif"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+
+    <!-- Button Style -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource LightCyanBrush}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource LightCyanBrush}"/>
+    </Style>
+
+    <Style Selector="Button:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource DarkCyanBrush}"/>
+    </Style>
+
+    <Style Selector="Button:focus /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <Style Selector="Button:focus-visible /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <Style Selector="Button:disabled">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+
+    <!-- TextBox Style -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource InputBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+
+    <Style Selector="TextBox:focus">
+        <Setter Property="Background" Value="#001E2D"/>
+        <Setter Property="BorderBrush" Value="{StaticResource LightCyanBrush}"/>
+    </Style>
+
+    <!-- ComboBox Style -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource InputBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+
+    <!-- NumericUpDown Style -->
+    <Style Selector="NumericUpDown">
+        <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource InputBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+
+    <!-- CheckBox Style -->
+    <Style Selector="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+    </Style>
+
+    <!-- CheckBox checked style - use cyan instead of magenta -->
+    <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <Style Selector="CheckBox:checked /template/ Path#CheckGlyph">
+        <Setter Property="Stroke" Value="{StaticResource TextWhiteBrush}"/>
+    </Style>
+
+    <!-- Label/TextBlock Style -->
+    <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+    </Style>
+
+    <!-- TabControl Style -->
+    <Style Selector="TabControl">
+        <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
+    </Style>
+
+    <Style Selector="TabItem">
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+        <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
+        <Setter Property="Padding" Value="16,8"/>
+    </Style>
+
+    <!-- Remove underline from selected tabs -->
+    <Style Selector="TabItem /template/ Border#PART_SelectedPipe">
+        <Setter Property="IsVisible" Value="False"/>
+        <Setter Property="Height" Value="0"/>
+    </Style>
+
+    <Style Selector="TabItem:selected /template/ Border#PART_SelectedPipe">
+        <Setter Property="IsVisible" Value="False"/>
+        <Setter Property="Height" Value="0"/>
+    </Style>
+
+    <Style Selector="TabItem:selected">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+    </Style>
+
+    <Style Selector="TabItem:pointerover:not(:selected)">
+        <Setter Property="Background" Value="{StaticResource LightCyanBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+    </Style>
+
+    <!-- Selected tab should stay highlighted even when hovering -->
+    <Style Selector="TabItem:selected:pointerover">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+    </Style>
+
+    <!-- Override the template to ensure selected tab stays highlighted on hover -->
+    <Style Selector="TabItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <Style Selector="TabItem:selected:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <!-- ListBox/ListView Style -->
+    <Style Selector="ListBox">
+        <Setter Property="Background" Value="{StaticResource DarkerBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+
+    <Style Selector="ListBoxItem">
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected:focus /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource LightCyanBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:focus /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource LightCyanBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <!-- Override any focus visuals that might show magenta -->
+    <Style Selector="ListBoxItem:selected /template/ Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:focus /template/ Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected:focus /template/ Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected:pointerover /template/ Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <!-- Force ListBox itself to not show selection colors -->
+    <Style Selector="ListBox">
+        <Setter Property="SelectionMode" Value="Single"/>
+    </Style>
+
+    <Style Selector="ListBox:focus">
+        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <!-- DataGrid Style -->
+    <Style Selector="DataGrid">
+        <Setter Property="Background" Value="{StaticResource DarkerBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+        <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource InputBorderBrush}"/>
+    </Style>
+
+    <Style Selector="DataGridColumnHeader">
+        <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+
+    <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+        <Setter Property="Fill" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <!-- TreeView Style -->
+    <Style Selector="TreeView">
+        <Setter Property="Background" Value="{StaticResource DarkerBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextWhiteBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+
+    <!-- Make TreeViewItem ContentPresenter stretch to full width -->
+    <Style Selector="TreeViewItem">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <Style Selector="TreeViewItem /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <Style Selector="TreeViewItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <Style Selector="TreeViewItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource LightCyanBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <Style Selector="TreeViewItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <Style Selector="TreeViewItem:selected:focus /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <!-- Override any focus visuals or borders that might show default colors -->
+    <Style Selector="TreeViewItem:selected /template/ Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="TreeViewItem:focus /template/ Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="TreeViewItem:selected:focus /template/ Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="TreeViewItem:selected:pointerover /template/ Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <!-- TreeView Expander (Arrow) - Larger clickable area -->
+    <Style Selector="TreeViewItem /template/ ToggleButton#PART_ExpanderButton">
+        <Setter Property="MinWidth" Value="24"/>
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="Padding" Value="4"/>
+    </Style>
+
+    <!-- Make validation background transparent when TreeViewItem is selected, so cyan selection shows through -->
+    <Style Selector="TreeViewItem:selected /template/ ContentPresenter Border">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="TreeViewItem:selected:focus /template/ ContentPresenter Border">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="TreeViewItem:selected:pointerover /template/ ContentPresenter Border">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <!-- Border Style -->
+    <Style Selector="Border.themed">
+        <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+
+    <!-- Panel Styles -->
+    <Style Selector="Panel.section">
+        <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
+    </Style>
+
+    <!-- ScrollViewer Style -->
+    <Style Selector="ScrollViewer">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="ScrollBar">
+        <Setter Property="Background" Value="{StaticResource DarkerBackgroundBrush}"/>
+    </Style>
+
+    <Style Selector="ScrollBar:vertical /template/ Thumb">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <Style Selector="ScrollBar:horizontal /template/ Thumb">
+        <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <!-- ToggleSwitch Style -->
+    <!-- Base styles that apply to both states -->
+    <Style Selector="ToggleSwitch">
+        <Setter Property="Foreground" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <!-- Track/Background - OFF state -->
+    <Style Selector="ToggleSwitch /template/ Border#OuterBorder">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style Selector="ToggleSwitch /template/ Border#SwitchKnobBounds">
+        <Setter Property="Background" Value="White"/>
+    </Style>
+
+    <Style Selector="ToggleSwitch /template/ Border#SwitchAreaGrid">
+        <Setter Property="Background" Value="White"/>
+    </Style>
+
+    <!-- Knob/Thumb - ensure cyan color -->
+    <Style Selector="ToggleSwitch /template/ Canvas#SwitchKnob">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="ToggleSwitch /template/ Canvas#SwitchKnob Ellipse">
+        <Setter Property="Fill" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <Style Selector="ToggleSwitch /template/ Grid#SwitchKnob">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="ToggleSwitch /template/ Ellipse">
+        <Setter Property="Fill" Value="{StaticResource AccentCyanBrush}"/>
+        <Setter Property="Stroke" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <!-- Ensure OFF state (unchecked) uses same styling -->
+    <Style Selector="ToggleSwitch:unchecked /template/ Border#OuterBorder">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <Style Selector="ToggleSwitch:unchecked /template/ Border#SwitchKnobBounds">
+        <Setter Property="Background" Value="White"/>
+    </Style>
+
+    <Style Selector="ToggleSwitch:unchecked /template/ Ellipse">
+        <Setter Property="Fill" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <!-- Track/Background - ON state (checked) - Dark mode active -->
+    <Style Selector="ToggleSwitch:checked /template/ Border#OuterBorder">
+        <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+
+    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobBounds">
+        <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
+    </Style>
+
+    <!-- Knob/Thumb - ON state (checked) - stays cyan -->
+    <Style Selector="ToggleSwitch:checked /template/ Ellipse">
+        <Setter Property="Fill" Value="{StaticResource AccentCyanBrush}"/>
+    </Style>
+</Styles>
