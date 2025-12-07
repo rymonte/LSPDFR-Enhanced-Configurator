@@ -345,7 +345,16 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         {
             if (SelectedRank== null || SelectedCopyFromRank== null) return;
 
-            var vehicleCount = SelectedCopyFromRank.Vehicles.Count;
+            // Count all vehicles: global + station-specific overrides
+            var allVehicles = new System.Collections.Generic.HashSet<string>(SelectedCopyFromRank.Vehicles.Select(v => v.Model), System.StringComparer.OrdinalIgnoreCase);
+            foreach (var station in SelectedCopyFromRank.Stations)
+            {
+                foreach (var vehicle in station.VehicleOverrides)
+                {
+                    allVehicles.Add(vehicle.Model);
+                }
+            }
+            var vehicleCount = allVehicles.Count;
             Logger.Info($"[USER] Attempting to copy {vehicleCount} vehicle(s) from '{SelectedCopyFromRank.Name}' to '{SelectedRank.Name}'");
 
             // Show confirmation dialog
@@ -456,7 +465,16 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         {
             if (SelectedRank== null || SelectedCopyToRank== null) return;
 
-            var vehicleCount = SelectedRank.Vehicles.Count;
+            // Count all vehicles: global + station-specific overrides
+            var allVehicles = new System.Collections.Generic.HashSet<string>(SelectedRank.Vehicles.Select(v => v.Model), System.StringComparer.OrdinalIgnoreCase);
+            foreach (var station in SelectedRank.Stations)
+            {
+                foreach (var vehicle in station.VehicleOverrides)
+                {
+                    allVehicles.Add(vehicle.Model);
+                }
+            }
+            var vehicleCount = allVehicles.Count;
             Logger.Info($"[USER] Attempting to copy {vehicleCount} vehicle(s) from '{SelectedRank.Name}' to '{SelectedCopyToRank.Name}'");
 
             // Show confirmation dialog

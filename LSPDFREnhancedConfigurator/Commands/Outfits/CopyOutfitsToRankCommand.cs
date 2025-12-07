@@ -13,7 +13,8 @@ namespace LSPDFREnhancedConfigurator.Commands.Outfits
     {
         private readonly RankHierarchy _sourceRank;
         private readonly RankHierarchy _targetRank;
-        private readonly List<string> _previousTargetOutfits;
+        private readonly List<string> _previousTargetGlobalOutfits;
+        private readonly Dictionary<string, List<string>> _previousTargetStationOutfits; // StationName -> List of outfits
         private readonly Action _dataChangedCallback;
 
         public string Description { get; }
@@ -27,9 +28,20 @@ namespace LSPDFREnhancedConfigurator.Commands.Outfits
             _targetRank = targetRank ?? throw new ArgumentNullException(nameof(targetRank));
             _dataChangedCallback = dataChangedCallback ?? throw new ArgumentNullException(nameof(dataChangedCallback));
 
-            _previousTargetOutfits = _targetRank.Outfits.ToList();
+            // Save previous state: global outfits
+            _previousTargetGlobalOutfits = _targetRank.Outfits.ToList();
 
-            // Count all source outfits: global + station-specific overrides
+            // Save previous state: station-specific outfits
+            _previousTargetStationOutfits = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var station in _targetRank.Stations)
+            {
+                if (station.OutfitOverrides.Count > 0)
+                {
+                    _previousTargetStationOutfits[station.StationName] = station.OutfitOverrides.ToList();
+                }
+            }
+
+            // Count all source outfits for description
             var allSourceOutfits = new HashSet<string>(_sourceRank.Outfits, StringComparer.OrdinalIgnoreCase);
             foreach (var station in _sourceRank.Stations)
             {
@@ -44,22 +56,39 @@ namespace LSPDFREnhancedConfigurator.Commands.Outfits
 
         public void Execute()
         {
+            // Clear all outfits from target: global and station-specific
             _targetRank.Outfits.Clear();
-
-            // Collect all outfits from source: global + station-specific overrides
-            var allSourceOutfits = new HashSet<string>(_sourceRank.Outfits, StringComparer.OrdinalIgnoreCase);
-            foreach (var station in _sourceRank.Stations)
+            foreach (var station in _targetRank.Stations)
             {
-                foreach (var outfit in station.OutfitOverrides)
-                {
-                    allSourceOutfits.Add(outfit);
-                }
+                station.OutfitOverrides.Clear();
             }
 
-            // Copy to target rank (global level only)
-            foreach (var outfit in allSourceOutfits)
+            // Copy global outfits from source to target
+            foreach (var outfit in _sourceRank.Outfits)
             {
                 _targetRank.Outfits.Add(outfit);
+            }
+
+            // Copy station-specific outfits
+            foreach (var sourceStation in _sourceRank.Stations)
+            {
+                foreach (var outfit in sourceStation.OutfitOverrides)
+                {
+                    // Try to find matching station in target
+                    var targetStation = _targetRank.Stations.FirstOrDefault(s =>
+                        s.StationName.Equals(sourceStation.StationName, StringComparison.OrdinalIgnoreCase));
+
+                    if (targetStation != null)
+                    {
+                        // Add to matching station
+                        targetStation.OutfitOverrides.Add(outfit);
+                    }
+                    else
+                    {
+                        // No matching station - add to global
+                        _targetRank.Outfits.Add(outfit);
+                    }
+                }
             }
 
             _dataChangedCallback();
@@ -67,10 +96,32 @@ namespace LSPDFREnhancedConfigurator.Commands.Outfits
 
         public void Undo()
         {
+            // Clear all outfits from target
             _targetRank.Outfits.Clear();
-            foreach (var outfit in _previousTargetOutfits)
+            foreach (var station in _targetRank.Stations)
+            {
+                station.OutfitOverrides.Clear();
+            }
+
+            // Restore previous global outfits
+            foreach (var outfit in _previousTargetGlobalOutfits)
             {
                 _targetRank.Outfits.Add(outfit);
+            }
+
+            // Restore previous station-specific outfits
+            foreach (var kvp in _previousTargetStationOutfits)
+            {
+                var station = _targetRank.Stations.FirstOrDefault(s =>
+                    s.StationName.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
+
+                if (station != null)
+                {
+                    foreach (var outfit in kvp.Value)
+                    {
+                        station.OutfitOverrides.Add(outfit);
+                    }
+                }
             }
 
             _dataChangedCallback();

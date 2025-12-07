@@ -13,7 +13,8 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
     {
         private readonly RankHierarchy _sourceRank;
         private readonly RankHierarchy _targetRank;
-        private readonly List<Vehicle> _actuallyAddedVehicles; // Only vehicles that were added (not duplicates)
+        private readonly List<Vehicle> _actuallyAddedGlobalVehicles;
+        private readonly Dictionary<string, List<Vehicle>> _actuallyAddedStationVehicles; // StationName -> List of vehicles
         private readonly Action _refreshCallback;
         private readonly Action _dataChangedCallback;
 
@@ -39,7 +40,8 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
             _targetRank = targetRank ?? throw new ArgumentNullException(nameof(targetRank));
             _refreshCallback = refreshCallback ?? throw new ArgumentNullException(nameof(refreshCallback));
             _dataChangedCallback = dataChangedCallback ?? throw new ArgumentNullException(nameof(dataChangedCallback));
-            _actuallyAddedVehicles = new List<Vehicle>();
+            _actuallyAddedGlobalVehicles = new List<Vehicle>();
+            _actuallyAddedStationVehicles = new Dictionary<string, List<Vehicle>>(StringComparer.OrdinalIgnoreCase);
 
             Description = $"Copy vehicles from '{sourceRank.Name}' to '{targetRank.Name}'";
         }
@@ -49,15 +51,52 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
         /// </summary>
         public void Execute()
         {
-            _actuallyAddedVehicles.Clear();
+            _actuallyAddedGlobalVehicles.Clear();
+            _actuallyAddedStationVehicles.Clear();
 
+            // Copy global vehicles from source to target
             foreach (var vehicle in _sourceRank.Vehicles)
             {
                 // Check if vehicle already exists (by model)
                 if (!_targetRank.Vehicles.Any(v => v.Model == vehicle.Model))
                 {
                     _targetRank.Vehicles.Add(vehicle);
-                    _actuallyAddedVehicles.Add(vehicle);
+                    _actuallyAddedGlobalVehicles.Add(vehicle);
+                }
+            }
+
+            // Copy station-specific vehicles
+            foreach (var sourceStation in _sourceRank.Stations)
+            {
+                foreach (var vehicle in sourceStation.VehicleOverrides)
+                {
+                    // Try to find matching station in target
+                    var targetStation = _targetRank.Stations.FirstOrDefault(s =>
+                        s.StationName.Equals(sourceStation.StationName, StringComparison.OrdinalIgnoreCase));
+
+                    if (targetStation != null)
+                    {
+                        // Add to matching station if not already present
+                        if (!targetStation.VehicleOverrides.Any(v => v.Model == vehicle.Model))
+                        {
+                            targetStation.VehicleOverrides.Add(vehicle);
+
+                            if (!_actuallyAddedStationVehicles.ContainsKey(targetStation.StationName))
+                            {
+                                _actuallyAddedStationVehicles[targetStation.StationName] = new List<Vehicle>();
+                            }
+                            _actuallyAddedStationVehicles[targetStation.StationName].Add(vehicle);
+                        }
+                    }
+                    else
+                    {
+                        // No matching station - add to global if not already present
+                        if (!_targetRank.Vehicles.Any(v => v.Model == vehicle.Model))
+                        {
+                            _targetRank.Vehicles.Add(vehicle);
+                            _actuallyAddedGlobalVehicles.Add(vehicle);
+                        }
+                    }
                 }
             }
 
@@ -70,9 +109,25 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
         /// </summary>
         public void Undo()
         {
-            foreach (var vehicle in _actuallyAddedVehicles)
+            // Remove global vehicles
+            foreach (var vehicle in _actuallyAddedGlobalVehicles)
             {
                 _targetRank.Vehicles.Remove(vehicle);
+            }
+
+            // Remove station-specific vehicles
+            foreach (var kvp in _actuallyAddedStationVehicles)
+            {
+                var station = _targetRank.Stations.FirstOrDefault(s =>
+                    s.StationName.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
+
+                if (station != null)
+                {
+                    foreach (var vehicle in kvp.Value)
+                    {
+                        station.VehicleOverrides.Remove(vehicle);
+                    }
+                }
             }
 
             _refreshCallback();
