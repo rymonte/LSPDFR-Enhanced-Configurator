@@ -6,7 +6,7 @@ using System.Linq;
 namespace LSPDFREnhancedConfigurator.Services
 {
     /// <summary>
-    /// Manages application settings stored in settings.ini
+    /// Manages application settings stored in lspdfrConfiguratorSettings.ini
     /// </summary>
     public class SettingsManager
     {
@@ -15,16 +15,16 @@ namespace LSPDFREnhancedConfigurator.Services
 
         public SettingsManager(string? settingsPath = null)
         {
-            // Store settings.ini next to the executable
+            // Store lspdfrConfiguratorSettings.ini next to the executable
             var appDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            _settingsFilePath = settingsPath ?? Path.Combine(appDirectory, "settings.ini");
+            _settingsFilePath = settingsPath ?? Path.Combine(appDirectory, "lspdfrConfiguratorSettings.ini");
             _settings = new Dictionary<string, string>();
 
             Load();
         }
 
         /// <summary>
-        /// Load settings from settings.ini file
+        /// Load settings from lspdfrConfiguratorSettings.ini file
         /// </summary>
         public void Load()
         {
@@ -32,6 +32,7 @@ namespace LSPDFREnhancedConfigurator.Services
 
             if (!File.Exists(_settingsFilePath))
             {
+                Logger.Info($"Settings file not found at {_settingsFilePath}, creating default settings");
                 // Create default settings file
                 CreateDefaultSettings();
                 return;
@@ -56,16 +57,19 @@ namespace LSPDFREnhancedConfigurator.Services
                         _settings[key] = value;
                     }
                 }
+
+                Logger.Info($"Loaded settings from {_settingsFilePath}");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Logger.Warn($"Failed to load settings from {_settingsFilePath}: {ex.Message}. Creating default settings.");
                 // If loading fails, create default settings
                 CreateDefaultSettings();
             }
         }
 
         /// <summary>
-        /// Save current settings to settings.ini file
+        /// Save current settings to lspdfrConfiguratorSettings.ini file
         /// </summary>
         public void Save()
         {
@@ -108,10 +112,11 @@ namespace LSPDFREnhancedConfigurator.Services
                 };
 
                 File.WriteAllLines(_settingsFilePath, lines);
+                Logger.Info($"Saved settings to {_settingsFilePath}");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently fail - settings not critical
+                Logger.Error($"Failed to save settings to {_settingsFilePath}: {ex.Message}");
             }
         }
 

@@ -29,7 +29,7 @@ bld/
 !README.md
 
 # Local settings and PII
-settings.ini
+lspdfrConfiguratorSettings.ini
 appsettings.Development.json
 launchSettings.json
 
