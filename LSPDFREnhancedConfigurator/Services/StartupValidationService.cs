@@ -235,9 +235,9 @@ namespace LSPDFREnhancedConfigurator.Services
             // Get available references from data service
             var availableVehicles = _dataService.AllVehicles.Select(v => v.Model).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var availableStations = _dataService.Stations.Select(s => s.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // Outfits use CombinedName format: "OutfitName.VariationName"
             var availableOutfits = _dataService.OutfitVariations
-                .Select(o => o.ParentOutfit.Name)
-                .Distinct()
+                .Select(o => o.CombinedName)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             foreach (var rank in ranks)

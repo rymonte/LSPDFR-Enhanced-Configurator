@@ -29,14 +29,35 @@ namespace LSPDFREnhancedConfigurator.Commands.Outfits
 
             _previousTargetOutfits = _targetRank.Outfits.ToList();
 
-            var count = _sourceRank.Outfits.Count;
+            // Count all source outfits: global + station-specific overrides
+            var allSourceOutfits = new HashSet<string>(_sourceRank.Outfits, StringComparer.OrdinalIgnoreCase);
+            foreach (var station in _sourceRank.Stations)
+            {
+                foreach (var outfit in station.OutfitOverrides)
+                {
+                    allSourceOutfits.Add(outfit);
+                }
+            }
+            var count = allSourceOutfits.Count;
             Description = $"Copy {count} outfit{(count != 1 ? "s" : "")} from '{sourceRank.Name}' to '{targetRank.Name}' (overwrite)";
         }
 
         public void Execute()
         {
             _targetRank.Outfits.Clear();
-            foreach (var outfit in _sourceRank.Outfits)
+
+            // Collect all outfits from source: global + station-specific overrides
+            var allSourceOutfits = new HashSet<string>(_sourceRank.Outfits, StringComparer.OrdinalIgnoreCase);
+            foreach (var station in _sourceRank.Stations)
+            {
+                foreach (var outfit in station.OutfitOverrides)
+                {
+                    allSourceOutfits.Add(outfit);
+                }
+            }
+
+            // Copy to target rank (global level only)
+            foreach (var outfit in allSourceOutfits)
             {
                 _targetRank.Outfits.Add(outfit);
             }

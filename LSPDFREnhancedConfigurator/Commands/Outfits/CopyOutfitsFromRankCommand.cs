@@ -38,10 +38,21 @@ namespace LSPDFREnhancedConfigurator.Commands.Outfits
         {
             _actuallyAddedOutfits.Clear();
 
-            foreach (var outfit in _sourceRank.Outfits)
+            // Collect all outfits from source: global + station-specific overrides
+            var allSourceOutfits = new HashSet<string>(_sourceRank.Outfits, StringComparer.OrdinalIgnoreCase);
+            foreach (var station in _sourceRank.Stations)
+            {
+                foreach (var outfit in station.OutfitOverrides)
+                {
+                    allSourceOutfits.Add(outfit);
+                }
+            }
+
+            // Copy to target rank (global level only)
+            foreach (var outfit in allSourceOutfits)
             {
                 // Check if outfit already exists
-                if (!_targetRank.Outfits.Contains(outfit))
+                if (!_targetRank.Outfits.Contains(outfit, StringComparer.OrdinalIgnoreCase))
                 {
                     _targetRank.Outfits.Add(outfit);
                     _actuallyAddedOutfits.Add(outfit);

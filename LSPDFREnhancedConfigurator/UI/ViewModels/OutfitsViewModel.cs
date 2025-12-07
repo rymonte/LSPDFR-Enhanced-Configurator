@@ -341,7 +341,16 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         {
             if (SelectedRank== null || SelectedCopyFromRank== null) return;
 
-            var outfitCount = SelectedCopyFromRank.Outfits.Count;
+            // Count all outfits: global + station-specific overrides
+            var allOutfits = new System.Collections.Generic.HashSet<string>(SelectedCopyFromRank.Outfits, System.StringComparer.OrdinalIgnoreCase);
+            foreach (var station in SelectedCopyFromRank.Stations)
+            {
+                foreach (var outfit in station.OutfitOverrides)
+                {
+                    allOutfits.Add(outfit);
+                }
+            }
+            var outfitCount = allOutfits.Count;
             Logger.Info($"[USER] Attempting to copy {outfitCount} outfit(s) from '{SelectedCopyFromRank.Name}' to '{SelectedRank.Name}'");
 
             // Show confirmation dialog
@@ -452,7 +461,16 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         {
             if (SelectedRank== null || SelectedCopyToRank== null) return;
 
-            var outfitCount = SelectedRank.Outfits.Count;
+            // Count all outfits: global + station-specific overrides
+            var allOutfits = new System.Collections.Generic.HashSet<string>(SelectedRank.Outfits, System.StringComparer.OrdinalIgnoreCase);
+            foreach (var station in SelectedRank.Stations)
+            {
+                foreach (var outfit in station.OutfitOverrides)
+                {
+                    allOutfits.Add(outfit);
+                }
+            }
+            var outfitCount = allOutfits.Count;
             Logger.Info($"[USER] Attempting to copy {outfitCount} outfit(s) from '{SelectedRank.Name}' to '{SelectedCopyToRank.Name}'");
 
             // Show confirmation dialog
