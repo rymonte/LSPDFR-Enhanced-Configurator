@@ -1205,35 +1205,8 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     // Save the selected profile
                     _settingsManager.SetSelectedProfile(SelectedProfile);
 
-                    // Load ranks for new profile
-                    var ranksPath = RanksXmlLoader.FindRanksXml(_gtaRootPath, SelectedProfile);
-                    if (ranksPath != null)
-                    {
-                        var loadedRanks = RanksXmlLoader.LoadFromFile(ranksPath);
-                        Logger.Info($"Loaded {loadedRanks.Count} ranks from {ranksPath}");
-
-                        // Link station references for loaded ranks
-                        _dataService.LinkStationReferencesForHierarchies(loadedRanks);
-                        Logger.Info($"Linked station references for {loadedRanks.Count} rank hierarchies");
-
-                        // Update RanksViewModel with new data
-                        RanksViewModel.LoadRanks(loadedRanks);
-
-                        // Update other ViewModels
-                        StationAssignmentsViewModel.LoadRanks(loadedRanks);
-                        VehiclesViewModel.LoadRanks(loadedRanks);
-                        OutfitsViewModel.LoadRanks(loadedRanks);
-
-                        // Regenerate XML preview
-                        RegenerateXmlPreview();
-
-                        StatusMessage = $"Profile '{SelectedProfile}' loaded successfully";
-                    }
-                    else
-                    {
-                        Logger.Warn($"No Ranks.xml found for profile: {SelectedProfile}");
-                        StatusMessage = $"No Ranks.xml found for profile '{SelectedProfile}'";
-                    }
+                    // Reload ranks data for the new profile
+                    await ReloadRanksData(SelectedProfile);
                 }
                 catch (System.Exception ex)
                 {
@@ -1612,9 +1585,13 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                     if (result)
                     {
-                        // Backup was restored successfully, reload the data
-                        StatusMessage = "Backup restored successfully. Please restart the application to reload the data.";
-                        Logger.Info("Backup restored successfully");
+                        // Backup was restored successfully, reload the data in-window
+                        Logger.Info("Backup restored successfully, reloading data");
+                        StatusMessage = "Backup restored successfully. Reloading data...";
+
+                        await ReloadRanksData(_currentProfile);
+
+                        StatusMessage = "Backup restored and data reloaded successfully";
                     }
                 }
             }
@@ -1623,6 +1600,41 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 Logger.Error($"Error showing restore backup dialog: {ex.Message}");
                 StatusMessage = $"Error: {ex.Message}";
             }
+        }
+
+        private async System.Threading.Tasks.Task ReloadRanksData(string profileName)
+        {
+            // Load ranks for the profile
+            var ranksPath = RanksXmlLoader.FindRanksXml(_gtaRootPath, profileName);
+            if (ranksPath != null)
+            {
+                var loadedRanks = RanksXmlLoader.LoadFromFile(ranksPath);
+                Logger.Info($"Loaded {loadedRanks.Count} ranks from {ranksPath}");
+
+                // Link station references for loaded ranks
+                _dataService.LinkStationReferencesForHierarchies(loadedRanks);
+                Logger.Info($"Linked station references for {loadedRanks.Count} rank hierarchies");
+
+                // Update RanksViewModel with new data
+                RanksViewModel.LoadRanks(loadedRanks);
+
+                // Update other ViewModels
+                StationAssignmentsViewModel.LoadRanks(loadedRanks);
+                VehiclesViewModel.LoadRanks(loadedRanks);
+                OutfitsViewModel.LoadRanks(loadedRanks);
+
+                // Regenerate XML preview
+                RegenerateXmlPreview();
+
+                StatusMessage = $"Profile '{profileName}' loaded successfully";
+            }
+            else
+            {
+                Logger.Warn($"No Ranks.xml found for profile: {profileName}");
+                StatusMessage = $"No Ranks.xml found for profile '{profileName}'";
+            }
+
+            await System.Threading.Tasks.Task.CompletedTask;
         }
 
         private void OnToggleXmlPreview()
