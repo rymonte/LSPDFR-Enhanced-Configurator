@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 using LSPDFREnhancedConfigurator.Models;
 
@@ -29,17 +30,24 @@ namespace LSPDFREnhancedConfigurator.Services
                 }
             }
 
-            var doc = new XDocument(
-                new XDeclaration("1.0", "utf-8", null),
-                ranksElement
-            );
+            var doc = new XDocument(ranksElement);
 
-            var settings = new StringBuilder();
-            using (var writer = new System.IO.StringWriter(settings))
+            // Generate XML without declaration, then prepend UTF-8 declaration manually
+            var xmlSettings = new XmlWriterSettings
+            {
+                Indent = true,
+                IndentChars = "  ",
+                OmitXmlDeclaration = true // Don't generate declaration
+            };
+
+            var sb = new StringBuilder();
+            using (var writer = XmlWriter.Create(sb, xmlSettings))
             {
                 doc.Save(writer);
-                return settings.ToString();
             }
+
+            // Manually prepend UTF-8 declaration
+            return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + sb.ToString();
         }
 
         private static XElement CreateRankElement(RankHierarchy rank)

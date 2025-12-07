@@ -773,10 +773,10 @@ namespace LSPDFREnhancedConfigurator
 
                                 if (restoreResult)
                                 {
-                                    // Backup was restored successfully
-                                    Logger.Info("Backup restored successfully - showing success message and reloading");
+                                    // Backup was restored successfully - auto-reload for error state
+                                    Logger.Info("Backup restored successfully - reloading application");
 
-                                    // Show success message
+                                    // Show brief success message
                                     var successDialog = new Window
                                     {
                                         Title = "Backup Restored",
@@ -836,9 +836,11 @@ namespace LSPDFREnhancedConfigurator
                                         successDialog.Close();
 
                                         // Reload the application by calling ContinueStartup again
+                                        // Close old window AFTER creating new one to prevent app shutdown
                                         Logger.Info("Reloading application after successful backup restoration");
-                                        mainWindow.Close();
+                                        var oldWindow = mainWindow;
                                         await ContinueStartup(desktop, settingsManager, gtaRootPath);
+                                        oldWindow.Close();
                                     };
 
                                     await successDialog.ShowDialog(mainWindow);

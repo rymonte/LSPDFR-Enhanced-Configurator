@@ -1595,12 +1595,14 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private async void OnRestoreBackup()
         {
-            Logger.Info("Restore Backup clicked");
+            Logger.Info("[OnRestoreBackup] Restore Backup clicked");
 
             try
             {
-                // Create and show restore backup dialog
+                Logger.Info("[OnRestoreBackup] Creating RestoreBackupDialogViewModel");
                 var restoreViewModel = new RestoreBackupDialogViewModel(_gtaRootPath, _currentProfile, _settingsManager);
+
+                Logger.Info("[OnRestoreBackup] Creating RestoreBackupDialog");
                 var restoreDialog = new RestoreBackupDialog
                 {
                     DataContext = restoreViewModel
@@ -1608,19 +1610,27 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                 if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
                 {
+                    Logger.Info("[OnRestoreBackup] Showing restore dialog...");
                     var result = await restoreDialog.ShowDialog<bool>(desktop.MainWindow);
+                    Logger.Info($"[OnRestoreBackup] Dialog closed with result: {result}");
 
                     if (result)
                     {
-                        // Backup was restored successfully, reload the data
+                        Logger.Info("[OnRestoreBackup] Setting status message");
                         StatusMessage = "Backup restored successfully. Please restart the application to reload the data.";
-                        Logger.Info("Backup restored successfully");
+                        Logger.Info("[OnRestoreBackup] Backup restored successfully - status message set");
+                    }
+                    else
+                    {
+                        Logger.Info("[OnRestoreBackup] Restore was cancelled or failed");
                     }
                 }
+
+                Logger.Info("[OnRestoreBackup] OnRestoreBackup method completing normally");
             }
             catch (System.Exception ex)
             {
-                Logger.Error($"Error showing restore backup dialog: {ex.Message}");
+                Logger.Error($"[OnRestoreBackup] Error in restore backup: {ex.Message}", ex);
                 StatusMessage = $"Error: {ex.Message}";
             }
         }
