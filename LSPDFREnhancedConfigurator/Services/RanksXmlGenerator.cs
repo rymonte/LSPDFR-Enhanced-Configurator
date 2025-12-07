@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
@@ -8,6 +9,15 @@ namespace LSPDFREnhancedConfigurator.Services
 {
     public class RanksXmlGenerator
     {
+        /// <summary>
+        /// Custom StringWriter that uses UTF-8 encoding instead of UTF-16
+        /// </summary>
+        private class Utf8StringWriter : StringWriter
+        {
+            public Utf8StringWriter(StringBuilder sb) : base(sb) { }
+
+            public override Encoding Encoding => new UTF8Encoding(false);
+        }
         public static string GenerateXml(List<RankHierarchy> rankHierarchies)
         {
             var ranksElement = new XElement("Ranks");
@@ -35,7 +45,7 @@ namespace LSPDFREnhancedConfigurator.Services
             );
 
             var settings = new StringBuilder();
-            using (var writer = new System.IO.StringWriter(settings))
+            using (var writer = new Utf8StringWriter(settings))
             {
                 doc.Save(writer);
                 return settings.ToString();

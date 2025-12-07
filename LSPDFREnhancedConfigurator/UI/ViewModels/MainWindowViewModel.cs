@@ -725,8 +725,8 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     Services.BackupPathHelper.CleanupOldBackups(_settingsManager, _currentProfile);
                 }
 
-                // Write XML to file with UTF-8 BOM encoding
-                System.IO.File.WriteAllText(ranksPath, xmlContent, new System.Text.UTF8Encoding(true));
+                // Write XML to file with UTF-8 encoding (no BOM)
+                System.IO.File.WriteAllText(ranksPath, xmlContent, new System.Text.UTF8Encoding(false));
                 Logger.Info($"Successfully saved Ranks.xml to: {ranksPath}");
 
                 // Update XML preview
