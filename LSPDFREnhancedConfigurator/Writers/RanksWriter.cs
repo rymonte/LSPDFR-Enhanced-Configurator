@@ -126,7 +126,7 @@ namespace LSPDFREnhancedConfigurator.Writers
             {
                 Indent = true,
                 IndentChars = "\t",
-                Encoding = Encoding.UTF8,
+                Encoding = new UTF8Encoding(false),
                 OmitXmlDeclaration = false
             };
 
