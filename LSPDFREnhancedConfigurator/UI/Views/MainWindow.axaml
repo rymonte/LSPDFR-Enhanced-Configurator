@@ -318,24 +318,49 @@
                                           Width="*"
                                           MinWidth="200"/>
 
-                        <DataGridTemplateColumn Header="Action" Width="100">
+                        <DataGridTemplateColumn Header="Actions" Width="160">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate DataType="models:ValidationErrorItem">
-                                    <Button Command="{Binding RemoveCommand}"
-                                           IsEnabled="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                           HorizontalAlignment="Center"
-                                           Padding="8,4"
-                                           MinWidth="80">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <Image Source="/Resources/Icons/delete-icon.png"
-                                                  Width="12"
-                                                  Height="12"
-                                                  VerticalAlignment="Center"/>
-                                            <TextBlock Text="Remove"
-                                                      VerticalAlignment="Center"
-                                                      FontSize="11"/>
-                                        </StackPanel>
-                                    </Button>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                                        <!-- Show Button -->
+                                        <Button Command="{Binding ShowCommand}"
+                                               IsVisible="{Binding CanShow}"
+                                               Padding="6,3"
+                                               MinWidth="60">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <Image Source="/Resources/Icons/info-icon.png"
+                                                      Width="12"
+                                                      Height="12"
+                                                      VerticalAlignment="Center"/>
+                                                <TextBlock Text="Show"
+                                                          VerticalAlignment="Center"
+                                                          FontSize="11"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Remove Button -->
+                                        <Button Command="{Binding RemoveCommand}"
+                                               IsVisible="{Binding CanRemove}"
+                                               Padding="6,3"
+                                               MinWidth="70">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <Image Source="/Resources/Icons/delete-icon.png"
+                                                      Width="12"
+                                                      Height="12"
+                                                      VerticalAlignment="Center"/>
+                                                <TextBlock Text="Remove"
+                                                          VerticalAlignment="Center"
+                                                          FontSize="11"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- No Actions Text -->
+                                        <TextBlock Text="{Binding ActionsText}"
+                                                  IsVisible="{Binding NoActionsAvailable}"
+                                                  VerticalAlignment="Center"
+                                                  FontSize="11"
+                                                  Foreground="{StaticResource TextGrayBrush}"/>
+                                    </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -425,14 +450,40 @@
                           Foreground="{StaticResource TextWhiteBrush}"
                           VerticalAlignment="Center"/>
 
-                <!-- Loading indicator -->
+                <!-- Debug logging indicator and loading indicator -->
                 <StackPanel Grid.Column="2"
                            Orientation="Horizontal"
-                           Spacing="8"
-                           IsVisible="{Binding IsLoading}">
-                    <TextBlock Text="Loading..."
-                              Foreground="{StaticResource AccentCyanBrush}"
-                              VerticalAlignment="Center"/>
+                           Spacing="16">
+
+                    <!-- Debug logging enabled indicator -->
+                    <Border Background="#28FFB84D"
+                           BorderBrush="{StaticResource WarningOrangeBrush}"
+                           BorderThickness="1"
+                           Padding="8,4"
+                           CornerRadius="3"
+                           IsVisible="{Binding IsDebugLoggingEnabled}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Source="/Resources/Icons/warning-icon.png"
+                                  Width="16"
+                                  Height="16"
+                                  VerticalAlignment="Center"/>
+                            <TextBlock Text="Debug Logging Enabled"
+                                      Foreground="{StaticResource WarningOrangeBrush}"
+                                      FontSize="11"
+                                      FontWeight="SemiBold"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Loading indicator -->
+                    <StackPanel Orientation="Horizontal"
+                               Spacing="8"
+                               IsVisible="{Binding IsLoading}">
+                        <TextBlock Text="Loading..."
+                                  Foreground="{StaticResource AccentCyanBrush}"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+
                 </StackPanel>
             </Grid>
         </Border>

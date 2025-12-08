@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
-using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
 
 namespace LSPDFREnhancedConfigurator.UI.ViewModels
 {
@@ -11,12 +11,12 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private string _issuesText = string.Empty;
         private bool _viewInUI;
 
-        public ValidationWarningDialogViewModel(ValidationReport report)
+        public ValidationWarningDialogViewModel(ValidationResult result)
         {
             ContinueAnywayCommand = new RelayCommand(OnContinueAnyway);
             ViewAndFixCommand = new RelayCommand(OnViewAndFix);
 
-            PopulateIssues(report);
+            PopulateIssues(result);
         }
 
         #region Properties
@@ -58,26 +58,26 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         #region Helper Methods
 
-        private void PopulateIssues(ValidationReport report)
+        private void PopulateIssues(ValidationResult result)
         {
             var text = "";
 
-            if (report.HasErrors)
+            if (result.HasErrors)
             {
-                text += $"ERRORS ({report.Errors.Count}):\n";
+                text += $"ERRORS ({result.ErrorCount}):\n";
                 text += new string('=', 60) + "\n\n";
-                text += FormatIssuesByCategory(report.Errors, "❌");
+                text += FormatIssuesByCategory(result.Errors.ToList(), "❌");
                 text += "\n";
             }
 
-            if (report.HasWarnings)
+            if (result.HasWarnings)
             {
-                text += $"WARNINGS ({report.Warnings.Count}):\n";
+                text += $"WARNINGS ({result.WarningCount}):\n";
                 text += new string('=', 60) + "\n\n";
-                text += FormatIssuesByCategory(report.Warnings, "⚠️");
+                text += FormatIssuesByCategory(result.Warnings.ToList(), "⚠️");
             }
 
-            if (report.HasErrors)
+            if (result.HasErrors)
             {
                 text += "\n" + new string('=', 60) + "\n";
                 text += "⚠️  ERRORS must be fixed before generating Ranks.xml\n";
@@ -87,51 +87,18 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             IssuesText = text;
         }
 
-        private string FormatIssuesByCategory(List<string> issues, string prefix)
+        private string FormatIssuesByCategory(List<ValidationIssue> issues, string prefix)
         {
-            // Categorize issues
-            var categorized = new Dictionary<string, List<string>>();
-
-            foreach (var issue in issues)
-            {
-                string category = "GENERAL";
-
-                // Extract category from issue text
-                if (issue.Contains("Outfit") || issue.Contains("outfit"))
-                {
-                    category = "OUTFITS";
-                }
-                else if (issue.Contains("Vehicle") || issue.Contains("vehicle"))
-                {
-                    category = "VEHICLES";
-                }
-                else if (issue.Contains("Station") || issue.Contains("station"))
-                {
-                    category = "STATIONS";
-                }
-                else if (issue.Contains("Rank") || issue.Contains("XP") || issue.Contains("salary"))
-                {
-                    category = "RANKS";
-                }
-
-                if (!categorized.ContainsKey(category))
-                {
-                    categorized[category] = new List<string>();
-                }
-
-                categorized[category].Add(issue);
-            }
-
-            // Sort categories: RANKS first, then alphabetically
-            var sortedCategories = categorized.Keys.OrderBy(k => k == "RANKS" ? "0" : k).ToList();
+            // Group issues by category
+            var categorized = issues.GroupBy(i => i.Category).OrderBy(g => g.Key == "Rank" ? "0" : g.Key);
 
             var result = "";
-            foreach (var category in sortedCategories)
+            foreach (var group in categorized)
             {
-                result += $"[{category}]\n";
-                foreach (var issue in categorized[category])
+                result += $"[{group.Key.ToUpper()}]\n";
+                foreach (var issue in group)
                 {
-                    result += $"{prefix} - {issue}\n";
+                    result += $"{prefix} - {issue.Message}\n";
                 }
                 result += "\n";
             }

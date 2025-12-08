@@ -7,18 +7,26 @@ using LSPDFREnhancedConfigurator.Commands;
 using LSPDFREnhancedConfigurator.Commands.Vehicles;
 using LSPDFREnhancedConfigurator.Models;
 using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
+
+// Use the unified ValidationSeverity from the validation service
+using RankValidationSeverity = LSPDFREnhancedConfigurator.Services.Validation.ValidationSeverity;
 
 namespace LSPDFREnhancedConfigurator.UI.ViewModels
 {
     public class VehiclesViewModel : ViewModelBase
     {
         private DataLoadingService? _dataService;
+        private ValidationService? _validationService;
+        private SelectionStateService? _selectionStateService;
         private List<RankHierarchy> _ranks = new List<RankHierarchy>();
         private RankHierarchy? _selectedRank;
         private RankHierarchy? _selectedCopyFromRank;
         private RankHierarchy? _selectedCopyToRank;
         private VehicleTreeItemViewModel? _selectedTreeItem;
         private string _vehicleAdvisory = string.Empty;
+        private bool _isUpdatingFromService = false;
 
         // Command Pattern Undo/Redo Manager
         private readonly UndoRedoManager _undoRedoManager = new UndoRedoManager(maxStackSize: 50);
@@ -26,6 +34,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         public VehiclesViewModel(DataLoadingService dataService, List<RankHierarchy>? loadedRanks)
         {
             _dataService = dataService;
+            _validationService = new ValidationService(dataService);
 
             if (loadedRanks != null && loadedRanks.Count > 0)
             {
@@ -88,6 +97,12 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 {
                     OnRankChanged();
                     UpdateCommandStates();
+
+                    // Notify selection service (unless we're updating from the service)
+                    if (!_isUpdatingFromService && _selectionStateService != null)
+                    {
+                        _selectionStateService.SelectedRank = value;
+                    }
                 }
             }
         }
@@ -766,37 +781,21 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         {
             VehicleAdvisory = string.Empty;
 
-            if (SelectedRank == null) return;
+            if (SelectedRank == null || _validationService == null) return;
 
-            // Find previous rank for comparison
-            int rankIndex = _ranks.IndexOf(SelectedRank);
-            if (rankIndex <= 0) return; // No previous rank
+            // Use ValidationService to validate with advisory context
+            var validationResult = _validationService.ValidateSingleRank(SelectedRank, _ranks, ValidationContext.Full);
 
-            var previousRank = _ranks[rankIndex - 1];
+            // Find advisory/warning issues related to vehicles
+            var vehicleAdvisories = validationResult.Issues
+                .Where(i => (i.Severity == ValidationSeverity.Advisory || i.Severity == ValidationSeverity.Warning) &&
+                           i.RankId == SelectedRank.Id &&
+                           i.Category == "Vehicle")
+                .ToList();
 
-            // Get all vehicles from previous rank (global + station-specific)
-            var previousGlobalVehicles = previousRank.Vehicles.Select(v => v.Model).ToHashSet();
-            var previousStationVehicles = previousRank.Stations
-                .SelectMany(s => s.VehicleOverrides.Select(v => v.Model))
-                .ToHashSet();
-            var allPreviousVehicles = previousGlobalVehicles.Union(previousStationVehicles).ToHashSet();
-
-            // Get all vehicles from current rank (global + station-specific)
-            var currentGlobalVehicles = SelectedRank.Vehicles.Select(v => v.Model).ToHashSet();
-            var currentStationVehicles = SelectedRank.Stations
-                .SelectMany(s => s.VehicleOverrides.Select(v => v.Model))
-                .ToHashSet();
-            var allCurrentVehicles = currentGlobalVehicles.Union(currentStationVehicles).ToHashSet();
-
-            // Find missing vehicles
-            var missingVehicles = allPreviousVehicles.Except(allCurrentVehicles).ToList();
-
-            if (missingVehicles.Count > 0)
+            if (vehicleAdvisories.Any())
             {
-                var vehicleList = string.Join(", ", missingVehicles.Take(3));
-                if (missingVehicles.Count > 3)
-                    vehicleList += $" (+{missingVehicles.Count - 3} more)";
-                VehicleAdvisory = $"{missingVehicles.Count} vehicle(s) from previous rank not present: {vehicleList}";
+                VehicleAdvisory = vehicleAdvisories.First().Message;
             }
         }
 
@@ -807,6 +806,31 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         public void SetDataService(DataLoadingService dataService)
         {
             _dataService = dataService;
+        }
+
+        public void SetSelectionStateService(SelectionStateService selectionStateService)
+        {
+            _selectionStateService = selectionStateService;
+
+            // Subscribe to rank selection changes from the service
+            _selectionStateService.RankSelectionChanged += OnSelectionStateServiceRankChanged;
+        }
+
+        private void OnSelectionStateServiceRankChanged(object? sender, RankSelectionChangedEventArgs e)
+        {
+            // Update local selection to match the service (prevent feedback loop)
+            if (_selectedRank != e.SelectedRank)
+            {
+                _isUpdatingFromService = true;
+                try
+                {
+                    SelectedRank = e.SelectedRank;
+                }
+                finally
+                {
+                    _isUpdatingFromService = false;
+                }
+            }
         }
 
         public void LoadRanks(List<RankHierarchy> ranks)

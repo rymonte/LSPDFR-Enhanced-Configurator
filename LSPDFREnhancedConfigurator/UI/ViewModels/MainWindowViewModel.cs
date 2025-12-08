@@ -13,13 +13,19 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using LSPDFREnhancedConfigurator.Models;
 using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
 using LSPDFREnhancedConfigurator.UI.Views;
+
+// Use the unified ValidationSeverity from the validation service
+using RankValidationSeverity = LSPDFREnhancedConfigurator.Services.Validation.ValidationSeverity;
 
 namespace LSPDFREnhancedConfigurator.UI.ViewModels
 {
     public class MainWindowViewModel : ViewModelBase
     {
         private readonly DataLoadingService _dataService;
+        private readonly SelectionStateService _selectionStateService;
         private readonly string _gtaRootPath;
         private readonly string _currentProfile;
         private readonly SettingsManager _settingsManager;
@@ -52,6 +58,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private string _loadingStatusForeground = "#00D9FF"; // Cyan
         private string _loadingProgressForeground = "#00D9FF"; // Cyan
         private string _loadingProgressBorderBrush = "#00D9FF"; // Cyan
+        private bool _isDebugLoggingEnabled = false;
 
         public MainWindowViewModel(
             DataLoadingService dataService,
@@ -61,6 +68,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             SettingsManager settingsManager)
         {
             _dataService = dataService;
+            _selectionStateService = new SelectionStateService();
             _gtaRootPath = gtaRootPath;
             _currentProfile = currentProfile;
             _settingsManager = settingsManager;
@@ -103,6 +111,19 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             // Subscribe to validation severity changes
             SettingsViewModel.ValidationSeverityChanged += OnValidationSeverityChanged;
+
+            // Subscribe to debug logging changes to update status bar
+            SettingsViewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(SettingsViewModel.EnableDebugLogging))
+                {
+                    IsDebugLoggingEnabled = SettingsViewModel.EnableDebugLogging;
+                }
+            };
+
+            // Initialize debug logging status from settings
+            IsDebugLoggingEnabled = _settingsManager.GetLogVerbosity() == LogLevel.Debug ||
+                                   _settingsManager.GetLogVerbosity() == LogLevel.Trace;
 
             // If data was provided, initialize immediately (for error cases)
             if (loadedRanks != null)
@@ -513,6 +534,12 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         {
             get => _loadingProgressBorderBrush;
             set => SetProperty(ref _loadingProgressBorderBrush, value);
+        }
+
+        public bool IsDebugLoggingEnabled
+        {
+            get => _isDebugLoggingEnabled;
+            set => SetProperty(ref _isDebugLoggingEnabled, value);
         }
 
         public ICommand GenerateCommand { get; }
@@ -956,12 +983,12 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         /// <summary>
         /// Shows modal when validation warnings are present (can generate anyway)
         /// </summary>
-        private async System.Threading.Tasks.Task<bool> ShowValidationWarningModal(ValidationReport report, string backupPath)
+        private async System.Threading.Tasks.Task<bool> ShowValidationWarningModal(ValidationResult validationResult, string backupPath)
         {
             if (Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
                 return false;
 
-            var warningsList = string.Join("\n", report.Warnings.Select(w => $"• {w}"));
+            var warningsList = string.Join("\n", validationResult.Warnings.Select(w => $"• {w.Message}"));
 
             var dialog = new Window
             {
@@ -991,7 +1018,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                                 },
                                 new TextBlock
                                 {
-                                    Text = $"Validation Warnings Detected ({report.Warnings.Count})",
+                                    Text = $"Validation Warnings Detected ({validationResult.WarningCount})",
                                     FontSize = 18,
                                     FontWeight = Avalonia.Media.FontWeight.Bold,
                                     Foreground = Avalonia.Media.Brushes.Orange,
@@ -1099,12 +1126,12 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         /// <summary>
         /// Shows modal when critical validation errors are present (cannot generate)
         /// </summary>
-        private async System.Threading.Tasks.Task<bool> ShowValidationErrorModal(ValidationReport report)
+        private async System.Threading.Tasks.Task<bool> ShowValidationErrorModal(ValidationResult validationResult)
         {
             if (Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
                 return false;
 
-            var errorsList = string.Join("\n", report.Errors.Select(e => $"• {e}"));
+            var errorsList = string.Join("\n", validationResult.Errors.Select(e => $"• {e.Message}"));
 
             var dialog = new Window
             {
@@ -1134,7 +1161,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                                 },
                                 new TextBlock
                                 {
-                                    Text = $"Critical Errors Detected ({report.Errors.Count})",
+                                    Text = $"Critical Errors Detected ({validationResult.ErrorCount})",
                                     FontSize = 18,
                                     FontWeight = Avalonia.Media.FontWeight.Bold,
                                     Foreground = Avalonia.Media.Brushes.Red,
@@ -1276,7 +1303,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                         // Only show errors
                         foreach (var error in report.Errors)
                         {
-                            ValidationErrorItems.Add(ParseValidationMessage(error, "Error"));
+                            ValidationErrorItems.Add(ParseValidationIssue(error));
                         }
                         break;
 
@@ -1284,34 +1311,38 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                         // Show errors and warnings
                         foreach (var error in report.Errors)
                         {
-                            ValidationErrorItems.Add(ParseValidationMessage(error, "Error"));
+                            ValidationErrorItems.Add(ParseValidationIssue(error));
                         }
                         foreach (var warning in report.Warnings)
                         {
-                            ValidationErrorItems.Add(ParseValidationMessage(warning, "Warning"));
+                            ValidationErrorItems.Add(ParseValidationIssue(warning));
                         }
                         break;
 
                     case ValidationFilterLevel.ShowAll:
                     default:
-                        // Show everything (errors and warnings)
-                        // Note: Advisories are shown inline in each tab, not in the validation panel
+                        // Show everything (errors, warnings, and advisories)
                         foreach (var error in report.Errors)
                         {
-                            ValidationErrorItems.Add(ParseValidationMessage(error, "Error"));
+                            ValidationErrorItems.Add(ParseValidationIssue(error));
                         }
                         foreach (var warning in report.Warnings)
                         {
-                            ValidationErrorItems.Add(ParseValidationMessage(warning, "Warning"));
+                            ValidationErrorItems.Add(ParseValidationIssue(warning));
+                        }
+                        foreach (var advisory in report.Advisories)
+                        {
+                            ValidationErrorItems.Add(ParseValidationIssue(advisory));
                         }
                         break;
                 }
 
-                // Add tree item validation issues (XP/salary progression, duplicate names)
+                // All validation issues are now reported through ValidationResult
+                // Tree items display visual indicators, but don't add separate issues
                 AddTreeItemValidationIssues(validationFilter);
 
                 // Update error count (errors, warnings, and advisories)
-                ValidationErrorCount = report.Errors.Count + report.Warnings.Count + CountTreeItemErrors();
+                ValidationErrorCount = report.ErrorCount + report.WarningCount + report.AdvisoryCount;
 
                 if (report.HasIssues)
                 {
@@ -1322,7 +1353,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     ValidationErrorsText = "✅ No validation errors found.\n\nAll ranks have valid progression and references.";
                 }
 
-                Logger.Info($"Validation completed: {report.Errors.Count} error(s), {report.Warnings.Count} warning(s), severity filter: {validationFilter}");
+                Logger.Info($"Validation completed: {report.ErrorCount} error(s), {report.WarningCount} warning(s), severity filter: {validationFilter}");
 
                 // Notify UI that validation button properties have changed
                 OnPropertyChanged(nameof(ValidationButtonText));
@@ -1345,154 +1376,52 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void AddTreeItemValidationIssues(ValidationFilterLevel filter)
         {
-            // Add rank tree item validation issues
-            if (_ranksViewModel?.RankTreeItems != null)
-            {
-                foreach (var treeItem in _ranksViewModel.RankTreeItems)
-                {
-                    AddRankTreeItemIssues(treeItem, filter);
-                }
-            }
+            // Tree item validation is now handled entirely by the validation service
+            // Tree items display validation state visually, but issues are reported through ValidationResult
+            // This method is kept for future extensibility if needed
         }
 
-        private void AddRankTreeItemIssues(RankTreeItemViewModel treeItem, ValidationFilterLevel filter)
+
+        public ValidationErrorItem ParseValidationIssue(ValidationIssue issue)
         {
-            // Check this item
-            if (treeItem.HasValidationIssue)
+            // Map severity to type string
+            string type = issue.Severity switch
             {
-                // Skip errors - they're already handled by startup validation with more detail
-                // Only add warnings and advisories here
-                if (treeItem.ValidationSeverity == RankValidationSeverity.Error)
-                {
-                    // Check children recursively
-                    foreach (var child in treeItem.Children)
-                    {
-                        AddRankTreeItemIssues(child, filter);
-                    }
-                    return;
-                }
+                ValidationSeverity.Error => "Error",
+                ValidationSeverity.Warning => "Warning",
+                ValidationSeverity.Advisory => "Advisory",
+                _ => "Info"
+            };
 
-                var typeStr = treeItem.ValidationSeverity switch
-                {
-                    RankValidationSeverity.Warning => "Warning",
-                    RankValidationSeverity.Advisory => "Advisory",
-                    _ => "Unknown"
-                };
-
-                // Apply filter
-                bool shouldAdd = filter switch
-                {
-                    ValidationFilterLevel.ErrorsOnly => false, // We don't add errors here
-                    ValidationFilterLevel.WarningsAndErrorsOnly => treeItem.ValidationSeverity == RankValidationSeverity.Warning,
-                    ValidationFilterLevel.ShowAll => true,
-                    _ => true
-                };
-
-                if (shouldAdd)
-                {
-                    // Determine issue message based on rank name and severity
-                    var message = treeItem.ValidationSeverity == RankValidationSeverity.Warning
-                        ? $"Rank '{treeItem.Rank.Name}': Salary is lower than previous rank"
-                        : $"Rank '{treeItem.Rank.Name}': Duplicate rank name detected";
-
-                    ValidationErrorItems.Add(new ValidationErrorItem
-                    {
-                        Type = typeStr,
-                        Severity = "Rank",
-                        RankName = treeItem.Rank.Name,
-                        ItemName = "",
-                        Message = message,
-                        RemoveCommand = null // No remove action for progression issues
-                    });
-                }
+            // Check if issue has auto-fix capability
+            RelayCommand? removeCommand = null;
+            if (issue.IsAutoFixable && issue.ItemName != null && issue.Category != null)
+            {
+                removeCommand = new RelayCommand(() => RemoveInvalidItem(
+                    issue.RankName ?? "",
+                    issue.Category,
+                    issue.ItemName ?? ""));
             }
 
-            // Check children recursively
-            foreach (var child in treeItem.Children)
+            // Check if issue can be shown (has a specific location)
+            RelayCommand? showCommand = null;
+            if (!string.IsNullOrEmpty(issue.RankName) && !string.IsNullOrEmpty(issue.Category))
             {
-                AddRankTreeItemIssues(child, filter);
+                showCommand = new RelayCommand(() => ShowValidationIssue(
+                    issue.RankName ?? "",
+                    issue.Category,
+                    issue.ItemName ?? ""));
             }
-        }
-
-        private int CountTreeItemErrors()
-        {
-            int count = 0;
-
-            // Count rank tree errors/warnings
-            if (_ranksViewModel?.RankTreeItems != null)
-            {
-                foreach (var treeItem in _ranksViewModel.RankTreeItems)
-                {
-                    count += CountRankTreeItemErrors(treeItem);
-                }
-            }
-
-            return count;
-        }
-
-        private int CountRankTreeItemErrors(RankTreeItemViewModel treeItem)
-        {
-            int count = 0;
-
-            // Count warnings and advisories - errors are already counted by startup validation
-            if (treeItem.ValidationSeverity == RankValidationSeverity.Warning ||
-                treeItem.ValidationSeverity == RankValidationSeverity.Advisory)
-            {
-                count++;
-            }
-
-            foreach (var child in treeItem.Children)
-            {
-                count += CountRankTreeItemErrors(child);
-            }
-
-            return count;
-        }
-
-        /// <summary>
-        /// Public method to add a validation item from a message string (called during startup)
-        /// </summary>
-        public void AddValidationItemFromMessage(string message, string type)
-        {
-            var item = ParseValidationMessage(message, type);
-            ValidationErrorItems.Add(item);
-        }
-
-        private ValidationErrorItem ParseValidationMessage(string message, string type)
-        {
-            // Pattern: "Rank 'RankName': Vehicle/Station/Outfit 'ItemName' not found in game data"
-            var referencePattern = @"Rank '([^']+)':\s+(Vehicle|Station|Outfit)\s+'([^']+)'\s+not found";
-            var match = Regex.Match(message, referencePattern, RegexOptions.IgnoreCase);
-
-            if (match.Success)
-            {
-                var rankName = match.Groups[1].Value;
-                var itemType = match.Groups[2].Value;
-                var itemName = match.Groups[3].Value;
-
-                return new ValidationErrorItem
-                {
-                    Type = type,
-                    Severity = itemType,
-                    RankName = rankName,
-                    ItemName = itemName,
-                    Message = message,
-                    RemoveCommand = new RelayCommand(() => RemoveInvalidItem(rankName, itemType, itemName))
-                };
-            }
-
-            // Fallback for other error types (rank progression errors, etc.)
-            var rankOnlyPattern = @"Rank '([^']+)':";
-            var rankMatch = Regex.Match(message, rankOnlyPattern);
 
             return new ValidationErrorItem
             {
                 Type = type,
-                Severity = "Rank",
-                RankName = rankMatch.Success ? rankMatch.Groups[1].Value : "",
-                ItemName = "",
-                Message = message,
-                RemoveCommand = null // Can't auto-remove rank progression errors
+                Severity = issue.Category,
+                RankName = issue.RankName ?? "",
+                ItemName = issue.ItemName ?? "",
+                Message = issue.Message,
+                RemoveCommand = removeCommand,
+                ShowCommand = showCommand
             };
         }
 
@@ -1578,6 +1507,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     // Re-run validation to update the list
                     RunValidation();
 
+                    // Trigger RanksViewModel to update tree item validation icons/tooltips
+                    RanksViewModel.LoadRanks(RanksViewModel.RankHierarchies.ToList());
+
                     StatusMessage = $"Removed invalid {itemType.ToLower()} '{itemName}' from rank '{rankName}'";
                 }
                 else
@@ -1590,6 +1522,73 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             {
                 Logger.Error($"Error removing invalid item: {ex.Message}");
                 StatusMessage = $"Error removing item: {ex.Message}";
+            }
+        }
+
+        private void ShowValidationIssue(string rankName, string itemType, string itemName)
+        {
+            Logger.Info($"[USER] Show validation issue: {itemType} '{itemName}' in rank '{rankName}'");
+
+            try
+            {
+                // Find the rank in the hierarchy
+                Models.RankHierarchy? rank = RanksViewModel.RankHierarchies.FirstOrDefault(r => r.Name == rankName);
+
+                // If not found in parent ranks, search pay bands
+                if (rank == null)
+                {
+                    foreach (var parentRank in RanksViewModel.RankHierarchies)
+                    {
+                        if (parentRank.IsParent && parentRank.PayBands.Count > 0)
+                        {
+                            rank = parentRank.PayBands.FirstOrDefault(pb => pb.Name == rankName);
+                            if (rank != null)
+                                break;
+                        }
+                    }
+                }
+
+                if (rank == null)
+                {
+                    Logger.Warn($"Could not find rank '{rankName}' to show issue");
+                    StatusMessage = $"Could not find rank '{rankName}'";
+                    return;
+                }
+
+                // Switch to the appropriate tab and select the rank
+                switch (itemType)
+                {
+                    case "Vehicle":
+                        CurrentTabIndex = 2; // Vehicles tab
+                        VehiclesViewModel.SelectedRank = rank;
+                        StatusMessage = $"Showing vehicles for rank '{rankName}'";
+                        break;
+
+                    case "Station":
+                        CurrentTabIndex = 1; // Station Assignments tab
+                        StationAssignmentsViewModel.SelectedRank = rank;
+                        StatusMessage = $"Showing station assignments for rank '{rankName}'";
+                        break;
+
+                    case "Outfit":
+                        CurrentTabIndex = 3; // Outfits tab
+                        OutfitsViewModel.SelectedRank = rank;
+                        StatusMessage = $"Showing outfits for rank '{rankName}'";
+                        break;
+
+                    case "Rank":
+                    default:
+                        CurrentTabIndex = 0; // Ranks tab
+                        StatusMessage = $"Showing rank '{rankName}'";
+                        break;
+                }
+
+                Logger.Info($"Successfully navigated to {itemType} issue in rank '{rankName}'");
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Error($"Error showing validation issue: {ex.Message}");
+                StatusMessage = $"Error showing issue: {ex.Message}";
             }
         }
 
@@ -1675,6 +1674,11 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             StationAssignmentsViewModel = new StationAssignmentsViewModel(dataService);
             VehiclesViewModel = new VehiclesViewModel(dataService, loadedRanks);
             OutfitsViewModel = new OutfitsViewModel(dataService, loadedRanks);
+
+            // Set selection state service for rank selection synchronization
+            StationAssignmentsViewModel.SetSelectionStateService(_selectionStateService);
+            VehiclesViewModel.SetSelectionStateService(_selectionStateService);
+            OutfitsViewModel.SetSelectionStateService(_selectionStateService);
 
             // Subscribe to data change events for real-time XML preview updates
             RanksViewModel.DataChanged += OnChildViewModelDataChanged;
