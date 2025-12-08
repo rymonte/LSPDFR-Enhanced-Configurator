@@ -235,7 +235,7 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                     });
                 }
 
-                // Check salary progression against previous rank
+                // Check XP and salary progression against previous rank
                 var flattenedRanks = FlattenRanks(allRanks);
                 var rankIndex = flattenedRanks.IndexOf(rank);
 
@@ -243,6 +243,23 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                 {
                     var previousRank = flattenedRanks[rankIndex - 1];
 
+                    // Check XP progression
+                    if (rank.RequiredPoints <= previousRank.RequiredPoints)
+                    {
+                        result.AddIssue(new ValidationIssue
+                        {
+                            Severity = ValidationSeverity.Error,
+                            Category = "Rank",
+                            RankName = rank.Name,
+                            RankId = rank.Id,
+                            Message = $"Required Points ({rank.RequiredPoints}) must be greater than previous rank '{previousRank.Name}' ({previousRank.RequiredPoints}).",
+                            RuleId = RuleId,
+                            SuggestedFix = $"Set Required Points to at least {previousRank.RequiredPoints + 1}.",
+                            PropertyName = "RequiredPoints"
+                        });
+                    }
+
+                    // Check salary progression
                     if (rank.Salary < previousRank.Salary)
                     {
                         var severity = context == ValidationContext.RealTime
