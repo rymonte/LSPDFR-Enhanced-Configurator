@@ -110,7 +110,6 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             {
                 if (SetProperty(ref _selectedTreeItem, value))
                 {
-                    Logger.Info($"[SelectedTreeItem] Changed to: {(value != null ? $"'{value.Rank.Name}'" : "null")}");
                     OnRankSelected();
                     UpdateCommandStates();
                 }
@@ -131,7 +130,6 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     if (!_hasUncommittedChanges)
                     {
                         _oldRankName = SelectedTreeItem.Rank.Name;
-                        Logger.Info($"[Property Change] Captured old RankName: '{_oldRankName}'");
                     }
 
                     SelectedTreeItem.Rank.Name = value;
@@ -151,7 +149,6 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                     _hasUncommittedChanges = true;
                     ValidateName();
-                    Logger.Info($"[Property Change] RankName changed from '{_oldRankName}' to '{value}'");
                 }
             }
         }
@@ -167,24 +164,26 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     if (!_hasUncommittedChanges)
                     {
                         _oldRequiredPoints = SelectedTreeItem.Rank.RequiredPoints;
-                        Logger.Info($"[Property Change] Captured old RequiredPoints: {_oldRequiredPoints}");
                     }
 
                     // Treat null as 0
                     SelectedTreeItem.Rank.RequiredPoints = value ?? 0;
                     ValidateRequiredPoints();
+                    UpdateTreeItemValidation(SelectedTreeItem);
                     SelectedTreeItem.UpdateDisplayName();
 
-                    // Don't update validation icon yet - wait for LostFocus
-
-                    // If this is a pay band, update parent's display too
+                    // If this is a pay band, update parent's display and validation too
                     if (SelectedTreeItem.Rank.Parent != null)
                     {
                         UpdateParentRankDisplay(SelectedTreeItem.Rank.Parent);
+                        var parentTreeItem = FindTreeItem(SelectedTreeItem.Rank.Parent.Id);
+                        if (parentTreeItem != null)
+                        {
+                            UpdateTreeItemValidation(parentTreeItem);
+                        }
                     }
 
                     _hasUncommittedChanges = true;
-                    Logger.Info($"[Property Change] RequiredPoints changed from {_oldRequiredPoints} to {value ?? 0}");
                 }
             }
         }
@@ -200,24 +199,26 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     if (!_hasUncommittedChanges)
                     {
                         _oldSalary = SelectedTreeItem.Rank.Salary;
-                        Logger.Info($"[Property Change] Captured old Salary: {_oldSalary}");
                     }
 
                     // Treat null as 0
                     SelectedTreeItem.Rank.Salary = value ?? 0;
                     ValidateSalary();
+                    UpdateTreeItemValidation(SelectedTreeItem);
                     SelectedTreeItem.UpdateDisplayName();
 
-                    // Don't update validation icon yet - wait for LostFocus
-
-                    // If this is a pay band, update parent's display too
+                    // If this is a pay band, update parent's display and validation too
                     if (SelectedTreeItem.Rank.Parent != null)
                     {
                         UpdateParentRankDisplay(SelectedTreeItem.Rank.Parent);
+                        var parentTreeItem = FindTreeItem(SelectedTreeItem.Rank.Parent.Id);
+                        if (parentTreeItem != null)
+                        {
+                            UpdateTreeItemValidation(parentTreeItem);
+                        }
                     }
 
                     _hasUncommittedChanges = true;
-                    Logger.Info($"[Property Change] Salary changed from {_oldSalary} to {value ?? 0}");
                 }
             }
         }
@@ -590,9 +591,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             // Try new command-based undo first
             if (_undoRedoManager.CanUndo)
             {
-                Logger.Info($"[Undo] Using command-based undo. Description: {_undoRedoManager.GetUndoDescription()}");
+                Logger.Debug($"[Undo] Using command-based undo. Description: {_undoRedoManager.GetUndoDescription()}");
                 _undoRedoManager.Undo();
-                Logger.Info($"Undo performed. Undo stack: {_undoRedoManager.UndoStackSize}, Redo stack: {_undoRedoManager.RedoStackSize}");
+                Logger.Debug($"Undo performed. Undo stack: {_undoRedoManager.UndoStackSize}, Redo stack: {_undoRedoManager.RedoStackSize}");
                 return;
             }
 
@@ -601,7 +602,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             // LastAffectedRankId is already set by the operation that was performed (e.g., OnRemove)
             // This will be used by RestoreExpansionStates to expand the affected rank
-            Logger.Info($"[Undo] Using JSON-based undo. LastAffectedRankId: {_lastAffectedRankId?.Substring(0, Math.Min(8, _lastAffectedRankId?.Length ?? 0)) ?? "null"}");
+            Logger.Debug($"[Undo] Using JSON-based undo. LastAffectedRankId: {_lastAffectedRankId?.Substring(0, Math.Min(8, _lastAffectedRankId?.Length ?? 0)) ?? "null"}");
 
             // Save current state to redo stack
             _redoStack.Push(SerializeRanks());
@@ -611,7 +612,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             RestoreRanks(previousState);
 
             UpdateCommandStates();
-            Logger.Info($"Undo performed. Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+            Logger.Debug($"Undo performed. Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
         }
 
         private bool CanRedo()
@@ -629,9 +630,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             // Try new command-based redo first
             if (_undoRedoManager.CanRedo)
             {
-                Logger.Info($"[Redo] Using command-based redo. Description: {_undoRedoManager.GetRedoDescription()}");
+                Logger.Debug($"[Redo] Using command-based redo. Description: {_undoRedoManager.GetRedoDescription()}");
                 _undoRedoManager.Redo();
-                Logger.Info($"Redo performed. Undo stack: {_undoRedoManager.UndoStackSize}, Redo stack: {_undoRedoManager.RedoStackSize}");
+                Logger.Debug($"Redo performed. Undo stack: {_undoRedoManager.UndoStackSize}, Redo stack: {_undoRedoManager.RedoStackSize}");
                 return;
             }
 
@@ -640,7 +641,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             // LastAffectedRankId should still be set from the previous operation
             // This will be used by RestoreExpansionStates to expand the affected rank
-            Logger.Info($"[Redo] Using JSON-based redo. LastAffectedRankId: {_lastAffectedRankId?.Substring(0, Math.Min(8, _lastAffectedRankId?.Length ?? 0)) ?? "null"}");
+            Logger.Debug($"[Redo] Using JSON-based redo. LastAffectedRankId: {_lastAffectedRankId?.Substring(0, Math.Min(8, _lastAffectedRankId?.Length ?? 0)) ?? "null"}");
 
             // Save current state to undo stack (without clearing redo)
             var currentState = SerializeRanks();
@@ -651,7 +652,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             RestoreRanks(nextState);
 
             UpdateCommandStates();
-            Logger.Info($"Redo performed. Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+            Logger.Debug($"Redo performed. Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
         }
 
         private bool CanPromote()
@@ -1003,24 +1004,16 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private bool CanMoveUp()
         {
             if (SelectedTreeItem?.Rank == null)
-            {
-                Logger.Info("[CanMoveUp] No item selected - returning false");
                 return false;
-            }
 
             var rank = SelectedTreeItem.Rank;
 
             // Pay bands cannot be moved up/down
             if (rank.Parent != null)
-            {
-                Logger.Info($"[CanMoveUp] '{rank.Name}' is a pay band (Parent: {rank.Parent.Name}) - returning false");
                 return false;
-            }
 
             var index = _ranks.IndexOf(rank);
-            bool canMove = index > 0;
-            Logger.Info($"[CanMoveUp] '{rank.Name}' is a parent rank at index {index} - returning {canMove}");
-            return canMove;
+            return index > 0;
         }
 
         private void OnMoveUp()
@@ -1056,24 +1049,16 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private bool CanMoveDown()
         {
             if (SelectedTreeItem?.Rank == null)
-            {
-                Logger.Info("[CanMoveDown] No item selected - returning false");
                 return false;
-            }
 
             var rank = SelectedTreeItem.Rank;
 
             // Pay bands cannot be moved up/down
             if (rank.Parent != null)
-            {
-                Logger.Info($"[CanMoveDown] '{rank.Name}' is a pay band (Parent: {rank.Parent.Name}) - returning false");
                 return false;
-            }
 
             var index = _ranks.IndexOf(rank);
-            bool canMove = index < _ranks.Count - 1;
-            Logger.Info($"[CanMoveDown] '{rank.Name}' is a parent rank at index {index} - returning {canMove}");
-            return canMove;
+            return index < _ranks.Count - 1;
         }
 
         private void OnMoveDown()
@@ -1197,7 +1182,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void RefreshTreeView()
         {
-            Logger.Info($"[RefreshTreeView] Refreshing tree view with {_ranks.Count} rank(s)");
+            Logger.Debug($"[RefreshTreeView] Refreshing tree view with {_ranks.Count} rank(s)");
 
             var currentSelection = SelectedTreeItem;
 
@@ -1210,9 +1195,8 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 {
                     if (e.PropertyName == nameof(RankTreeItemViewModel.IsExpanded) && s is RankTreeItemViewModel item)
                     {
-                        Logger.Info($"[RefreshTreeView] IsExpanded changed for '{item.Rank.Name}' to {item.IsExpanded}");
                         UpdateTreeItemValidation(item);
-                        Logger.Info($"[RefreshTreeView] After UpdateTreeItemValidation: Severity={item.ValidationSeverity}, Tooltip='{item.ValidationTooltip}'");
+                        Logger.Trace($"[RefreshTreeView] After UpdateTreeItemValidation: Severity={item.ValidationSeverity}, Tooltip='{item.ValidationTooltip}'");
                     }
                 };
                 RankTreeItems.Add(treeItem);
@@ -1231,7 +1215,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             // Update validation states for all tree items
             UpdateAllValidationStates();
 
-            Logger.Info($"[RefreshTreeView] Refresh complete - {RankTreeItems.Count} item(s) in tree");
+            Logger.Debug($"[RefreshTreeView] Refresh complete - {RankTreeItems.Count} item(s) in tree");
         }
 
         /// <summary>
@@ -1279,7 +1263,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 {
                     severity = RankValidationSeverity.Error;
                     tooltip = string.Join("\n", errors.Select(e => e.Message));
-                    Logger.Info($"[UpdateTreeItemValidation] Setting ERROR severity for {rank.Name}");
+                    Logger.Debug($"[UpdateTreeItemValidation] Setting ERROR severity for {rank.Name}");
                     treeItem.UpdateValidationState(severity, tooltip);
                     return;
                 }
@@ -1318,16 +1302,14 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 {
                     severity = RankValidationSeverity.Error;
                     tooltip = "Rank must have more than one pay band";
-                    Logger.Info($"[UpdateTreeItemValidation] Setting ERROR severity for {rank.Name} - only 1 pay band");
+                    Logger.Debug($"[UpdateTreeItemValidation] Setting ERROR severity for {rank.Name} - only 1 pay band");
                     treeItem.UpdateValidationState(severity, tooltip);
                     return;
                 }
 
                 // For parent ranks with pay bands: bubble up child errors when collapsed
-                Logger.Info($"[UpdateTreeItemValidation] Parent rank '{rank.Name}' - IsExpanded={treeItem.IsExpanded}, Children count={treeItem.Children.Count}");
                 if (!treeItem.IsExpanded)
                 {
-                    Logger.Info($"[UpdateTreeItemValidation] Parent rank '{rank.Name}' is COLLAPSED - checking children for errors to bubble up");
 
                     // Collect validation issues from all child pay bands
                     var childSeverity = RankValidationSeverity.None;
@@ -1410,7 +1392,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     var parentTreeItem = FindTreeItem(SelectedTreeItem.Rank.Parent.Id);
                     if (parentTreeItem != null)
                     {
-                        Logger.Info($"[OnFieldLostFocus] Updating parent '{parentTreeItem.Rank.Name}' validation after child change");
+                        Logger.Debug($"[OnFieldLostFocus] Updating parent '{parentTreeItem.Rank.Name}' validation after child change");
                         UpdateTreeItemValidation(parentTreeItem);
                     }
                 }

@@ -1945,20 +1945,20 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 // Get current ranks from RanksViewModel
                 var ranks = RanksViewModel.RankHierarchies.ToList();
 
-                Logger.Info($"RegenerateXmlPreview called. Ranks count: {ranks.Count}");
+                Logger.Debug($"RegenerateXmlPreview called. Ranks count: {ranks.Count}");
 
                 // Log first rank details for debugging
                 if (ranks.Count > 0)
                 {
                     var firstRank = ranks[0];
-                    Logger.Info($"First rank: Name='{firstRank.Name}', RequiredPoints={firstRank.RequiredPoints}, Salary={firstRank.Salary}");
+                    Logger.Debug($"First rank: Name='{firstRank.Name}', RequiredPoints={firstRank.RequiredPoints}, Salary={firstRank.Salary}");
                 }
 
                 if (ranks.Count > 0)
                 {
                     // Generate XML using RanksXmlGenerator
                     string xmlContent = RanksXmlGenerator.GenerateXml(ranks);
-                    Logger.Info($"Generated XML content length: {xmlContent.Length} chars");
+                    Logger.Debug($"Generated XML content length: {xmlContent.Length} chars");
 
                     // Find the first Name tag in the XML to verify actual content
                     var nameTagStart = xmlContent.IndexOf("<Name>");
@@ -1968,7 +1968,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                         if (nameTagEnd >= 0)
                         {
                             var nameInXml = xmlContent.Substring(nameTagStart + 6, nameTagEnd - nameTagStart - 6);
-                            Logger.Info($"First Name in generated XML: '{nameInXml}'");
+                            Logger.Debug($"First Name in generated XML: '{nameInXml}'");
                         }
                     }
 
@@ -1977,7 +1977,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                     XmlPreviewText = xmlContent;
 
-                    Logger.Info($"XML Preview regenerated. Changed: {changed}, Old length: {oldText?.Length ?? 0}, New length: {xmlContent.Length}");
+                    Logger.Debug($"XML Preview regenerated. Changed: {changed}, Old length: {oldText?.Length ?? 0}, New length: {xmlContent.Length}");
                 }
                 else
                 {
@@ -1995,7 +1995,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private void OnChildViewModelDataChanged(object sender, EventArgs e)
         {
             // Regenerate XML preview whenever child ViewModels report data changes
-            Logger.Info($"Data changed event received from {sender?.GetType().Name}");
+            Logger.Debug($"Data changed event received from {sender?.GetType().Name}");
             RegenerateXmlPreview();
 
             // Always run validation to update button text/icon in real-time
