@@ -11,19 +11,22 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
     {
         private readonly DataLoadingService _dataService;
         private readonly Models.Station? _contextStation;
+        private readonly List<string>? _existingOutfits;
         private List<Models.OutfitVariation> _allOutfits = new List<Models.OutfitVariation>();
         private string _searchText = string.Empty;
         private string _statusText = "0 outfits selected";
         private bool _isStrictSearch = false;
 
-        public AddOutfitsDialogViewModel(DataLoadingService dataService, Models.Station? contextStation = null)
+        public AddOutfitsDialogViewModel(DataLoadingService dataService, Models.Station? contextStation = null, List<string>? existingOutfits = null)
         {
             _dataService = dataService;
             _contextStation = contextStation;
+            _existingOutfits = existingOutfits;
             OutfitItems = new ObservableCollection<OutfitItemViewModel>();
 
             AddSelectedCommand = new RelayCommand(OnAddSelected, CanAddSelected);
 
+            Logger.Debug($"AddOutfitsDialogViewModel constructor - {existingOutfits?.Count ?? 0} existing outfits to exclude");
             LoadData();
         }
 
@@ -107,12 +110,28 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void LoadOutfits()
         {
+            // Load all outfits and filter out existing ones
             _allOutfits = _dataService.OutfitVariations.ToList();
+
+            if (_existingOutfits != null && _existingOutfits.Count > 0)
+            {
+                // Create a set of existing outfit names for fast lookup
+                var existingNames = new HashSet<string>(_existingOutfits, StringComparer.OrdinalIgnoreCase);
+                _allOutfits = _allOutfits.Where(o => !existingNames.Contains(o.CombinedName)).ToList();
+                Logger.Debug($"Filtered out {_existingOutfits.Count} existing outfits, {_allOutfits.Count} available");
+            }
+
             FilterOutfits();
         }
 
         private void FilterOutfits()
         {
+            // Preserve selection state before clearing
+            var selectedCombinedNames = OutfitItems
+                .Where(o => o.IsSelected)
+                .Select(o => o.CombinedName)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             OutfitItems.Clear();
 
             var searchText = SearchText.Trim();
@@ -223,6 +242,13 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             foreach (var (outfit, _) in filteredOutfits)
             {
                 var item = new OutfitItemViewModel(outfit);
+
+                // Restore selection state if this outfit was previously selected
+                if (selectedCombinedNames.Contains(outfit.CombinedName))
+                {
+                    item.IsSelected = true;
+                }
+
                 item.PropertyChanged += (s, e) =>
                 {
                     if (e.PropertyName == nameof(OutfitItemViewModel.IsSelected))

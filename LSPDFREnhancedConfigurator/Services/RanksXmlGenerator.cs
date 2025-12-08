@@ -88,6 +88,30 @@ namespace LSPDFREnhancedConfigurator.Services
                     // StyleID
                     stationElement.Add(new XElement("StyleID", station.StyleID));
 
+                    // Station-specific Vehicles
+                    if (station.Vehicles.Count > 0)
+                    {
+                        var vehiclesElement = new XElement("Vehicles");
+                        foreach (var vehicle in station.Vehicles)
+                        {
+                            vehiclesElement.Add(new XElement("Vehicle",
+                                new XAttribute("model", vehicle.Model),
+                                vehicle.DisplayName));
+                        }
+                        stationElement.Add(vehiclesElement);
+                    }
+
+                    // Station-specific Outfits
+                    if (station.Outfits.Count > 0)
+                    {
+                        var outfitsElement = new XElement("Outfits");
+                        foreach (var outfit in station.Outfits)
+                        {
+                            outfitsElement.Add(new XElement("Outfit", outfit));
+                        }
+                        stationElement.Add(outfitsElement);
+                    }
+
                     stationsElement.Add(stationElement);
                 }
 

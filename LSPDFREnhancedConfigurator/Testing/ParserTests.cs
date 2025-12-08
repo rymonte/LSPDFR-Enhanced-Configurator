@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using LSPDFREnhancedConfigurator.Services;
-using LSPDFREnhancedConfigurator.Writers;
 
 namespace LSPDFREnhancedConfigurator.Testing
 {
@@ -133,13 +132,13 @@ namespace LSPDFREnhancedConfigurator.Testing
                     Console.WriteLine($"    XP: {rank.RequiredPoints}, Salary: ${rank.Salary}");
                     Console.WriteLine($"    Stations: {rank.Stations.Count}, Vehicles: {rank.Vehicles.Count}, Outfits: {rank.Outfits.Count}");
 
-                    // Check for station overrides
-                    var stationsWithOverrides = rank.Stations.Where(s =>
-                        s.VehicleOverrides.Count > 0 || s.OutfitOverrides.Count > 0).ToList();
+                    // Check for station-specific items
+                    var stationsWithItems = rank.Stations.Where(s =>
+                        s.Vehicles.Count > 0 || s.Outfits.Count > 0).ToList();
 
-                    if (stationsWithOverrides.Count > 0)
+                    if (stationsWithItems.Count > 0)
                     {
-                        Console.WriteLine($"    Stations with overrides: {stationsWithOverrides.Count}");
+                        Console.WriteLine($"    Stations with specific items: {stationsWithItems.Count}");
                     }
                 }
                 if (dataLoader.Ranks.Count > 3)
@@ -157,7 +156,9 @@ namespace LSPDFREnhancedConfigurator.Testing
             Console.WriteLine("TEST 10: Validating Ranks");
             if (dataLoader.Ranks.Count > 0)
             {
-                var errors = RanksWriter.ValidateRanks(dataLoader.Ranks, dataLoader);
+                var validationService = new StartupValidationService(dataLoader);
+                var report = validationService.ValidateRanks(dataLoader.Ranks);
+                var errors = report.Errors.Select(e => e.Message).ToList();
                 if (errors.Count == 0)
                 {
                     Console.WriteLine("✓ All ranks are valid!\n");
@@ -177,13 +178,9 @@ namespace LSPDFREnhancedConfigurator.Testing
                 }
             }
 
-            // Test 11: Generate Summary
+            // Test 11: Disabled (GenerateSummary will be ported separately)
             Console.WriteLine("TEST 11: Generate Ranks Summary");
-            if (dataLoader.Ranks.Count > 0)
-            {
-                var summary = RanksWriter.GenerateSummary(dataLoader.Ranks.Take(2).ToList());
-                Console.WriteLine(summary);
-            }
+            Console.WriteLine("  (Summary generation feature to be restored later)\n");
 
             Console.WriteLine("=== ALL TESTS COMPLETED ===");
         }

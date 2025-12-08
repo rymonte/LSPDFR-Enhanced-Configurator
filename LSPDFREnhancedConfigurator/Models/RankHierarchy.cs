@@ -96,8 +96,8 @@ namespace LSPDFREnhancedConfigurator.Models
                     new List<string>(station.Zones),
                     station.StyleID
                 );
-                stationClone.VehicleOverrides = new List<Vehicle>(station.VehicleOverrides);
-                stationClone.OutfitOverrides = new List<string>(station.OutfitOverrides);
+                stationClone.Vehicles = new List<Vehicle>(station.Vehicles);
+                stationClone.Outfits = new List<string>(station.Outfits);
                 stationClone.StationReference = station.StationReference;
                 clone.Stations.Add(stationClone);
             }

@@ -54,7 +54,7 @@ namespace LSPDFREnhancedConfigurator.Commands.Outfits
             // Copy station-specific outfits
             foreach (var sourceStation in _sourceRank.Stations)
             {
-                foreach (var outfit in sourceStation.OutfitOverrides)
+                foreach (var outfit in sourceStation.Outfits)
                 {
                     // Try to find matching station in target
                     var targetStation = _targetRank.Stations.FirstOrDefault(s =>
@@ -63,9 +63,9 @@ namespace LSPDFREnhancedConfigurator.Commands.Outfits
                     if (targetStation != null)
                     {
                         // Add to matching station if not already present
-                        if (!targetStation.OutfitOverrides.Contains(outfit, StringComparer.OrdinalIgnoreCase))
+                        if (!targetStation.Outfits.Contains(outfit, StringComparer.OrdinalIgnoreCase))
                         {
-                            targetStation.OutfitOverrides.Add(outfit);
+                            targetStation.Outfits.Add(outfit);
 
                             if (!_actuallyAddedStationOutfits.ContainsKey(targetStation.StationName))
                             {
@@ -108,7 +108,7 @@ namespace LSPDFREnhancedConfigurator.Commands.Outfits
                 {
                     foreach (var outfit in kvp.Value)
                     {
-                        station.OutfitOverrides.Remove(outfit);
+                        station.Outfits.Remove(outfit);
                     }
                 }
             }

@@ -164,7 +164,7 @@ namespace LSPDFREnhancedConfigurator.Services
             try
             {
                 // Find Ranks.xml location
-                var ranksPath = RanksXmlLoader.FindRanksXml(gtaRootPath, profileName);
+                var ranksPath = Parsers.RanksParser.FindRanksXml(gtaRootPath, profileName);
                 if (ranksPath == null)
                 {
                     Logger.Debug($"No Ranks.xml found for profile {profileName}, skipping backup migration");

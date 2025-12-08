@@ -174,13 +174,22 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             {
                 // Determine if we're adding to a specific station
                 Station? contextStation = null;
+                List<Vehicle> existingVehicles = new List<Vehicle>();
+
                 if (SelectedTreeItem != null && SelectedTreeItem.IsStationNode && SelectedTreeItem.Station != null)
                 {
                     contextStation = SelectedTreeItem.Station.StationReference;
+                    // For station context, exclude vehicles already assigned to this station
+                    existingVehicles.AddRange(SelectedTreeItem.Station.Vehicles);
+                }
+                else
+                {
+                    // For global context, exclude vehicles already assigned globally
+                    existingVehicles.AddRange(SelectedRank.Vehicles);
                 }
 
-                // Create dialog viewmodel with station context
-                var dialogViewModel = new AddVehiclesDialogViewModel(_dataService, contextStation);
+                // Create dialog viewmodel with station context and existing vehicles to exclude
+                var dialogViewModel = new AddVehiclesDialogViewModel(_dataService, contextStation, existingVehicles);
 
                 // Show dialog
                 var dialog = new Views.AddVehiclesDialog
@@ -202,14 +211,14 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                             // Filter out vehicles that already exist in this station
                             var vehiclesToAdd = dialogViewModel.SelectedVehicles
-                                .Where(v => !station.VehicleOverrides.Any(existing => existing.Model == v.Model))
+                                .Where(v => !station.Vehicles.Any(existing => existing.Model == v.Model))
                                 .ToList();
 
                             if (vehiclesToAdd.Count > 0)
                             {
                                 foreach (var vehicle in vehiclesToAdd)
                                 {
-                                    station.VehicleOverrides.Add(vehicle);
+                                    station.Vehicles.Add(vehicle);
                                 }
 
                                 LoadVehiclesForSelectedRank();
@@ -296,10 +305,10 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                     foreach (var vehicle in vehicles)
                     {
-                        var toRemove = station.VehicleOverrides.FirstOrDefault(v => v.Model == vehicle.Model);
+                        var toRemove = station.Vehicles.FirstOrDefault(v => v.Model == vehicle.Model);
                         if (toRemove != null)
                         {
-                            station.VehicleOverrides.Remove(toRemove);
+                            station.Vehicles.Remove(toRemove);
                         }
                     }
 
@@ -364,7 +373,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             var allVehicles = new System.Collections.Generic.HashSet<string>(SelectedCopyFromRank.Vehicles.Select(v => v.Model), System.StringComparer.OrdinalIgnoreCase);
             foreach (var station in SelectedCopyFromRank.Stations)
             {
-                foreach (var vehicle in station.VehicleOverrides)
+                foreach (var vehicle in station.Vehicles)
                 {
                     allVehicles.Add(vehicle.Model);
                 }
@@ -484,7 +493,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             var allVehicles = new System.Collections.Generic.HashSet<string>(SelectedRank.Vehicles.Select(v => v.Model), System.StringComparer.OrdinalIgnoreCase);
             foreach (var station in SelectedRank.Stations)
             {
-                foreach (var vehicle in station.VehicleOverrides)
+                foreach (var vehicle in station.Vehicles)
                 {
                     allVehicles.Add(vehicle.Model);
                 }
@@ -621,6 +630,20 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         #endregion
 
+        #region Public Methods
+
+        /// <summary>
+        /// Refreshes the vehicle tree to reflect current rank/station state.
+        /// Called when station assignments change in another tab.
+        /// </summary>
+        public void RefreshVehicleTree()
+        {
+            LoadVehiclesForSelectedRank();
+            CheckAdvisories();
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private void OnRankChanged()
@@ -652,7 +675,17 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             foreach (var vehicle in SelectedRank.Vehicles)
             {
-                var agencyDisplay = vehicle.Agencies.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a)) ?? "UNKNOWN";
+                // Look up agency from reference data
+                var agencyDisplay = "UNKNOWN";
+                if (_dataService != null)
+                {
+                    var refVehicle = _dataService.AllVehicles.FirstOrDefault(v => v.Model.Equals(vehicle.Model, StringComparison.OrdinalIgnoreCase));
+                    if (refVehicle != null)
+                    {
+                        agencyDisplay = refVehicle.PrimaryAgency;
+                    }
+                }
+
                 var vehicleText = $"[{agencyDisplay.ToUpper()}] {vehicle.DisplayName} ({vehicle.Model})";
                 var vehicleNode = new VehicleTreeItemViewModel(vehicleText, vehicle, parent: globalNode, checkedChangedCallback: OnTreeItemCheckedChanged);
 
@@ -679,9 +712,19 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 var stationNode = new VehicleTreeItemViewModel(stationText, station: station, checkedChangedCallback: OnTreeItemCheckedChanged);
 
                 // Add station-specific vehicle overrides
-                foreach (var vehicle in station.VehicleOverrides)
+                foreach (var vehicle in station.Vehicles)
                 {
-                    var agencyDisplay = vehicle.Agencies.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a)) ?? "UNKNOWN";
+                    // Look up agency from reference data
+                    var agencyDisplay = "UNKNOWN";
+                    if (_dataService != null)
+                    {
+                        var refVehicle = _dataService.AllVehicles.FirstOrDefault(v => v.Model.Equals(vehicle.Model, StringComparison.OrdinalIgnoreCase));
+                        if (refVehicle != null)
+                        {
+                            agencyDisplay = refVehicle.PrimaryAgency;
+                        }
+                    }
+
                     var vehicleText = $"[{agencyDisplay.ToUpper()}] {vehicle.DisplayName} ({vehicle.Model})";
                     var vehicleNode = new VehicleTreeItemViewModel(vehicleText, vehicle, parent: stationNode, checkedChangedCallback: OnTreeItemCheckedChanged);
 
@@ -767,6 +810,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void OnVehiclesChanged()
         {
+            // Check advisories when vehicles change
+            CheckAdvisories();
+
             // Notify parent that vehicles have changed
             // This would trigger XML regeneration in the main window
             DataChanged?.Invoke(this, EventArgs.Empty);

@@ -337,7 +337,7 @@ namespace LSPDFREnhancedConfigurator
             Logger.Info($"Using GTA V directory: {gtaRootPath}");
 
             // Get available profiles first
-            var profiles = RanksXmlLoader.GetAvailableProfiles(gtaRootPath);
+            var profiles = Parsers.RanksParser.GetAvailableProfiles(gtaRootPath);
             string? currentProfile = null;
 
             if (profiles.Count == 0)
@@ -434,10 +434,10 @@ namespace LSPDFREnhancedConfigurator
                 mainViewModel.UpdateLoadingProgress("Loading ranks...", $"Reading Ranks.xml for profile: {currentProfile}", 20);
 
                 List<Models.RankHierarchy>? loadedRanks = null;
-                var ranksPath = RanksXmlLoader.FindRanksXml(gtaRootPath, currentProfile);
+                var ranksPath = Parsers.RanksParser.FindRanksXml(gtaRootPath, currentProfile);
                 if (ranksPath != null)
                 {
-                    loadedRanks = RanksXmlLoader.LoadFromFile(ranksPath);
+                    loadedRanks = Parsers.RanksParser.ParseRanksFile(ranksPath);
                     Logger.Debug($"Loaded {loadedRanks.Count} ranks from {ranksPath}");
                 }
 
@@ -718,7 +718,7 @@ namespace LSPDFREnhancedConfigurator
                 var backupFiles = new List<string>();
                 try
                 {
-                    var ranksPath = RanksXmlLoader.FindRanksXml(gtaRootPath, currentProfile);
+                    var ranksPath = Parsers.RanksParser.FindRanksXml(gtaRootPath, currentProfile);
                     if (ranksPath != null)
                     {
                         var directory = Path.GetDirectoryName(ranksPath);

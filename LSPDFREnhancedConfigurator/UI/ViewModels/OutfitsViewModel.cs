@@ -174,13 +174,22 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             {
                 // Determine if we're adding to a specific station
                 Station? contextStation = null;
+                List<string> existingOutfits = new List<string>();
+
                 if (SelectedTreeItem != null && SelectedTreeItem.IsStationNode && SelectedTreeItem.Station != null)
                 {
                     contextStation = SelectedTreeItem.Station.StationReference;
+                    // For station context, exclude outfits already assigned to this station
+                    existingOutfits.AddRange(SelectedTreeItem.Station.Outfits);
+                }
+                else
+                {
+                    // For global context, exclude outfits already assigned globally
+                    existingOutfits.AddRange(SelectedRank.Outfits);
                 }
 
-                // Create dialog viewmodel with station context
-                var dialogViewModel = new AddOutfitsDialogViewModel(_dataService, contextStation);
+                // Create dialog viewmodel with station context and existing outfits to exclude
+                var dialogViewModel = new AddOutfitsDialogViewModel(_dataService, contextStation, existingOutfits);
 
                 // Show dialog
                 var dialog = new Views.AddOutfitsDialog
@@ -202,14 +211,14 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                             // Filter out outfits that already exist in this station
                             var outfitsToAdd = dialogViewModel.SelectedOutfits
-                                .Where(o => !station.OutfitOverrides.Contains(o))
+                                .Where(o => !station.Outfits.Contains(o))
                                 .ToList();
 
                             if (outfitsToAdd.Count > 0)
                             {
                                 foreach (var outfit in outfitsToAdd)
                                 {
-                                    station.OutfitOverrides.Add(outfit);
+                                    station.Outfits.Add(outfit);
                                 }
 
                                 LoadOutfitsForSelectedRank();
@@ -296,7 +305,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                     foreach (var outfit in outfits)
                     {
-                        station.OutfitOverrides.Remove(outfit);
+                        station.Outfits.Remove(outfit);
                     }
 
                     Logger.Info($"[USER] Removed {outfits.Count} outfit(s) from station '{station.StationName}': {outfitList}");
@@ -360,7 +369,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             var allOutfits = new System.Collections.Generic.HashSet<string>(SelectedCopyFromRank.Outfits, System.StringComparer.OrdinalIgnoreCase);
             foreach (var station in SelectedCopyFromRank.Stations)
             {
-                foreach (var outfit in station.OutfitOverrides)
+                foreach (var outfit in station.Outfits)
                 {
                     allOutfits.Add(outfit);
                 }
@@ -480,7 +489,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             var allOutfits = new System.Collections.Generic.HashSet<string>(SelectedRank.Outfits, System.StringComparer.OrdinalIgnoreCase);
             foreach (var station in SelectedRank.Stations)
             {
-                foreach (var outfit in station.OutfitOverrides)
+                foreach (var outfit in station.Outfits)
                 {
                     allOutfits.Add(outfit);
                 }
@@ -617,6 +626,20 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         #endregion
 
+        #region Public Methods
+
+        /// <summary>
+        /// Refreshes the outfit tree to reflect current rank/station state.
+        /// Called when station assignments change in another tab.
+        /// </summary>
+        public void RefreshOutfitTree()
+        {
+            LoadOutfitsForSelectedRank();
+            CheckAdvisories();
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private void OnRankChanged()
@@ -673,7 +696,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 var stationNode = new OutfitTreeItemViewModel(stationText, station: station, checkedChangedCallback: OnTreeItemCheckedChanged);
 
                 // Add station-specific outfit overrides
-                foreach (var outfit in station.OutfitOverrides)
+                foreach (var outfit in station.Outfits)
                 {
                     var outfitNode = new OutfitTreeItemViewModel(outfit, outfit, parent: stationNode, checkedChangedCallback: OnTreeItemCheckedChanged);
 
@@ -759,6 +782,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void OnOutfitsChanged()
         {
+            // Check advisories when outfits change
+            CheckAdvisories();
+
             // Notify parent that outfits have changed
             // This would trigger XML regeneration in the main window
             DataChanged?.Invoke(this, EventArgs.Empty);

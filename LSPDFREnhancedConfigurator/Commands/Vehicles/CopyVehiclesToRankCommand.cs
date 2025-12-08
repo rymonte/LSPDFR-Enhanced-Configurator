@@ -44,9 +44,9 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
             _previousTargetStationVehicles = new Dictionary<string, List<Vehicle>>(StringComparer.OrdinalIgnoreCase);
             foreach (var station in _targetRank.Stations)
             {
-                if (station.VehicleOverrides.Count > 0)
+                if (station.Vehicles.Count > 0)
                 {
-                    _previousTargetStationVehicles[station.StationName] = station.VehicleOverrides.ToList();
+                    _previousTargetStationVehicles[station.StationName] = station.Vehicles.ToList();
                 }
             }
 
@@ -54,7 +54,7 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
             var allSourceVehicles = new HashSet<string>(_sourceRank.Vehicles.Select(v => v.Model), StringComparer.OrdinalIgnoreCase);
             foreach (var station in _sourceRank.Stations)
             {
-                foreach (var vehicle in station.VehicleOverrides)
+                foreach (var vehicle in station.Vehicles)
                 {
                     allSourceVehicles.Add(vehicle.Model);
                 }
@@ -72,7 +72,7 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
             _targetRank.Vehicles.Clear();
             foreach (var station in _targetRank.Stations)
             {
-                station.VehicleOverrides.Clear();
+                station.Vehicles.Clear();
             }
 
             // Copy global vehicles from source to target
@@ -84,7 +84,7 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
             // Copy station-specific vehicles
             foreach (var sourceStation in _sourceRank.Stations)
             {
-                foreach (var vehicle in sourceStation.VehicleOverrides)
+                foreach (var vehicle in sourceStation.Vehicles)
                 {
                     // Try to find matching station in target
                     var targetStation = _targetRank.Stations.FirstOrDefault(s =>
@@ -93,7 +93,7 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
                     if (targetStation != null)
                     {
                         // Add to matching station
-                        targetStation.VehicleOverrides.Add(vehicle);
+                        targetStation.Vehicles.Add(vehicle);
                     }
                     else
                     {
@@ -115,7 +115,7 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
             _targetRank.Vehicles.Clear();
             foreach (var station in _targetRank.Stations)
             {
-                station.VehicleOverrides.Clear();
+                station.Vehicles.Clear();
             }
 
             // Restore previous global vehicles
@@ -134,7 +134,7 @@ namespace LSPDFREnhancedConfigurator.Commands.Vehicles
                 {
                     foreach (var vehicle in kvp.Value)
                     {
-                        station.VehicleOverrides.Add(vehicle);
+                        station.Vehicles.Add(vehicle);
                     }
                 }
             }

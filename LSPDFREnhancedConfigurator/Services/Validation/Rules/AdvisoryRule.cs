@@ -147,7 +147,7 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                 }
 
                 // Check if rank has no vehicles at all (advisory, not error)
-                if (current.Vehicles.Count == 0)
+                if (!HasAnyVehicles(current))
                 {
                     result.AddIssue(new ValidationIssue
                     {
@@ -155,14 +155,14 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                         Category = "Vehicle",
                         RankName = current.Name,
                         RankId = current.Id,
-                        Message = $"Rank '{current.Name}' has no vehicles assigned. " +
+                        Message = $"Rank '{current.Name}' has no vehicles assigned (global or station-specific). " +
                                  $"Consider adding at least one vehicle for this rank.",
                         RuleId = RuleId
                     });
                 }
 
                 // Check if rank has no outfits at all (advisory, not error)
-                if (current.Outfits.Count == 0)
+                if (!HasAnyOutfits(current))
                 {
                     result.AddIssue(new ValidationIssue
                     {
@@ -170,7 +170,7 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                         Category = "Outfit",
                         RankName = current.Name,
                         RankId = current.Id,
-                        Message = $"Rank '{current.Name}' has no outfits assigned. " +
+                        Message = $"Rank '{current.Name}' has no outfits assigned (global or station-specific). " +
                                  $"Consider adding at least one outfit for this rank.",
                         RuleId = RuleId
                     });
@@ -183,7 +183,7 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
             {
                 var firstRank = allRanks[0];
 
-                if (firstRank.Vehicles.Count == 0)
+                if (!HasAnyVehicles(firstRank))
                 {
                     result.AddIssue(new ValidationIssue
                     {
@@ -191,13 +191,13 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                         Category = "Vehicle",
                         RankName = firstRank.Name,
                         RankId = firstRank.Id,
-                        Message = $"First rank '{firstRank.Name}' has no vehicles assigned. " +
+                        Message = $"First rank '{firstRank.Name}' has no vehicles assigned (global or station-specific). " +
                                  $"Consider adding at least one vehicle for this rank.",
                         RuleId = RuleId
                     });
                 }
 
-                if (firstRank.Outfits.Count == 0)
+                if (!HasAnyOutfits(firstRank))
                 {
                     result.AddIssue(new ValidationIssue
                     {
@@ -205,7 +205,7 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                         Category = "Outfit",
                         RankName = firstRank.Name,
                         RankId = firstRank.Id,
-                        Message = $"First rank '{firstRank.Name}' has no outfits assigned. " +
+                        Message = $"First rank '{firstRank.Name}' has no outfits assigned (global or station-specific). " +
                                  $"Consider adding at least one outfit for this rank.",
                         RuleId = RuleId
                     });
@@ -236,7 +236,7 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
             }
 
             // Check if rank has no vehicles at all
-            if (rank.Vehicles.Count == 0)
+            if (!HasAnyVehicles(rank))
             {
                 result.AddIssue(new ValidationIssue
                 {
@@ -244,14 +244,14 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                     Category = "Vehicle",
                     RankName = rank.Name,
                     RankId = rank.Id,
-                    Message = $"Rank '{rank.Name}' has no vehicles assigned. " +
+                    Message = $"Rank '{rank.Name}' has no vehicles assigned (global or station-specific). " +
                              $"Consider adding at least one vehicle for this rank.",
                     RuleId = RuleId
                 });
             }
 
             // Check if rank has no outfits at all
-            if (rank.Outfits.Count == 0)
+            if (!HasAnyOutfits(rank))
             {
                 result.AddIssue(new ValidationIssue
                 {
@@ -259,7 +259,7 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                     Category = "Outfit",
                     RankName = rank.Name,
                     RankId = rank.Id,
-                    Message = $"Rank '{rank.Name}' has no outfits assigned. " +
+                    Message = $"Rank '{rank.Name}' has no outfits assigned (global or station-specific). " +
                              $"Consider adding at least one outfit for this rank.",
                     RuleId = RuleId
                 });
@@ -370,6 +370,32 @@ namespace LSPDFREnhancedConfigurator.Services.Validation.Rules
                     });
                 }
             }
+        }
+
+        /// <summary>
+        /// Checks if a rank has any vehicles assigned (global or station-specific)
+        /// </summary>
+        private bool HasAnyVehicles(RankHierarchy rank)
+        {
+            // Check global vehicles
+            if (rank.Vehicles.Count > 0)
+                return true;
+
+            // Check station-specific vehicles
+            return rank.Stations.Any(s => s.Vehicles.Count > 0);
+        }
+
+        /// <summary>
+        /// Checks if a rank has any outfits assigned (global or station-specific)
+        /// </summary>
+        private bool HasAnyOutfits(RankHierarchy rank)
+        {
+            // Check global outfits
+            if (rank.Outfits.Count > 0)
+                return true;
+
+            // Check station-specific outfits
+            return rank.Stations.Any(s => s.Outfits.Count > 0);
         }
 
         private List<RankHierarchy> FlattenRanks(List<RankHierarchy> rankHierarchies)

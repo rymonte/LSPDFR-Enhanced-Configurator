@@ -26,6 +26,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
     {
         private readonly DataLoadingService _dataService;
         private readonly SelectionStateService _selectionStateService;
+        private readonly ValidationDismissalService _dismissalService;
         private readonly string _gtaRootPath;
         private readonly string _currentProfile;
         private readonly SettingsManager _settingsManager;
@@ -59,6 +60,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private string _loadingProgressForeground = "#00D9FF"; // Cyan
         private string _loadingProgressBorderBrush = "#00D9FF"; // Cyan
         private bool _isDebugLoggingEnabled = false;
+        private bool _showDismissedValidations = false;
 
         public MainWindowViewModel(
             DataLoadingService dataService,
@@ -69,6 +71,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         {
             _dataService = dataService;
             _selectionStateService = new SelectionStateService();
+            _dismissalService = new ValidationDismissalService(settingsManager);
             _gtaRootPath = gtaRootPath;
             _currentProfile = currentProfile;
             _settingsManager = settingsManager;
@@ -86,9 +89,13 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             RetryLoadCommand = new RelayCommand(OnRetryLoad);
             UndoCommand = new RelayCommand(OnUndo, CanUndo);
             RedoCommand = new RelayCommand(OnRedo, CanRedo);
+            DismissAllWarningsCommand = new RelayCommand(OnDismissAllWarnings, CanDismissAllWarnings);
+            DismissAllAdvisoriesCommand = new RelayCommand(OnDismissAllAdvisories, CanDismissAllAdvisories);
+            RefreshValidationCommand = new RelayCommand(OnRefreshValidation);
+            ToggleShowDismissedCommand = new RelayCommand(OnToggleShowDismissed);
 
             // Load actual profiles from disk
-            var profiles = RanksXmlLoader.GetAvailableProfiles(gtaRootPath);
+            var profiles = Parsers.RanksParser.GetAvailableProfiles(gtaRootPath);
             AvailableProfiles = new ObservableCollection<string>(profiles);
             SelectedProfile = currentProfile;
 
@@ -542,6 +549,21 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             set => SetProperty(ref _isDebugLoggingEnabled, value);
         }
 
+        public bool ShowDismissedValidations
+        {
+            get => _showDismissedValidations;
+            set
+            {
+                if (SetProperty(ref _showDismissedValidations, value))
+                {
+                    OnPropertyChanged(nameof(ShowDismissedButtonText));
+                    RunValidation(); // Refresh validation display to show/hide dismissed items
+                }
+            }
+        }
+
+        public string ShowDismissedButtonText => ShowDismissedValidations ? "Hide Dismissed" : "Show Dismissed";
+
         public ICommand GenerateCommand { get; }
         public ICommand ExitCommand { get; }
         public ICommand ShowValidationErrorsCommand { get; }
@@ -555,6 +577,10 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         public ICommand RetryLoadCommand { get; }
         public ICommand UndoCommand { get; }
         public ICommand RedoCommand { get; }
+        public ICommand DismissAllWarningsCommand { get; }
+        public ICommand DismissAllAdvisoriesCommand { get; }
+        public ICommand RefreshValidationCommand { get; }
+        public ICommand ToggleShowDismissedCommand { get; }
 
         private bool CanUndo()
         {
@@ -657,6 +683,74 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             ((RelayCommand)RedoCommand).RaiseCanExecuteChanged();
         }
 
+        private bool CanDismissAllWarnings()
+        {
+            return ValidationErrorItems.Any(item => item.Type == "Warning" && item.CanDismiss);
+        }
+
+        private void OnDismissAllWarnings()
+        {
+            var warnings = ValidationErrorItems.Where(item => item.Type == "Warning" && !item.IsDismissed).ToList();
+            foreach (var warning in warnings)
+            {
+                if (warning.RankId != null)
+                {
+                    var itemName = warning.ItemName ?? "";
+                    _dismissalService.Dismiss(warning.RankId, warning.Severity, itemName, warning.Message);
+                }
+            }
+            Logger.Info($"Dismissed {warnings.Count} warning(s)");
+            RunValidation(); // Refresh display
+        }
+
+        private bool CanDismissAllAdvisories()
+        {
+            return ValidationErrorItems.Any(item => item.Type == "Advisory" && item.CanDismiss);
+        }
+
+        private void OnDismissAllAdvisories()
+        {
+            var advisories = ValidationErrorItems.Where(item => item.Type == "Advisory" && !item.IsDismissed).ToList();
+            foreach (var advisory in advisories)
+            {
+                if (advisory.RankId != null)
+                {
+                    var itemName = advisory.ItemName ?? "";
+                    _dismissalService.Dismiss(advisory.RankId, advisory.Severity, itemName, advisory.Message);
+                }
+            }
+            Logger.Info($"Dismissed {advisories.Count} advisor{(advisories.Count == 1 ? "y" : "ies")}");
+            RunValidation(); // Refresh display
+        }
+
+        private void OnRefreshValidation()
+        {
+            Logger.Info("[USER] Refresh validation - clearing all dismissals");
+            _dismissalService.ClearAll();
+            ShowDismissedValidations = false; // Reset toggle
+            RunValidation(); // Rerun validation
+        }
+
+        private void OnToggleShowDismissed()
+        {
+            ShowDismissedValidations = !ShowDismissedValidations;
+            Logger.Info($"[USER] {(ShowDismissedValidations ? "Showing" : "Hiding")} dismissed validations");
+        }
+
+        private void DismissValidationIssue(ValidationIssue issue)
+        {
+            if (issue.RankId != null)
+            {
+                // Call the ValidationIssue overload which applies message hash for unique keys
+                _dismissalService.Dismiss(issue);
+
+                var itemName = issue.ItemName ?? "";
+                var itemDesc = string.IsNullOrEmpty(itemName) ? issue.Category : $"{issue.Category} '{itemName}'";
+                Logger.Info($"[USER] Dismissed {issue.Severity} for {itemDesc} in rank '{issue.RankName}'");
+                RunValidation(); // Refresh display
+            }
+        }
+
         private bool CanGenerate()
         {
             return !IsLoading;
@@ -691,7 +785,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 var report = validationService.ValidateRanks(ranks);
 
                 // Determine backup path
-                var ranksPath = RanksXmlLoader.FindRanksXml(_gtaRootPath, _currentProfile);
+                var ranksPath = Parsers.RanksParser.FindRanksXml(_gtaRootPath, _currentProfile);
                 if (ranksPath == null)
                 {
                     // Create default path
@@ -847,7 +941,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             Logger.Info("[USER] Open Ranks.xml clicked from loading error");
             try
             {
-                var ranksPath = RanksXmlLoader.FindRanksXml(_gtaRootPath, _currentProfile);
+                var ranksPath = Parsers.RanksParser.FindRanksXml(_gtaRootPath, _currentProfile);
                 if (ranksPath != null && System.IO.File.Exists(ranksPath))
                 {
                     var psi = new System.Diagnostics.ProcessStartInfo
@@ -1216,6 +1310,98 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             return false; // Always return false for error modal
         }
 
+        /// <summary>
+        /// Shows modal with a list of error messages
+        /// </summary>
+        private async System.Threading.Tasks.Task ShowRanksValidationErrorModal(List<string> errors)
+        {
+            if (Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+                return;
+
+            var errorsList = string.Join("\n", errors.Select(e => $"• {e}"));
+
+            var dialog = new Window
+            {
+                Title = "Ranks Validation Errors",
+                Width = 700,
+                Height = 450,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = true,
+                Content = new StackPanel
+                {
+                    Margin = new Avalonia.Thickness(20),
+                    Spacing = 12,
+                    Children =
+                    {
+                        new StackPanel
+                        {
+                            Orientation = Avalonia.Layout.Orientation.Horizontal,
+                            Spacing = 12,
+                            Children =
+                            {
+                                new Image
+                                {
+                                    Source = new Avalonia.Media.Imaging.Bitmap(Avalonia.Platform.AssetLoader.Open(new System.Uri("avares://LSPDFREnhancedConfigurator/Resources/Icons/error-icon.png"))),
+                                    Width = 32,
+                                    Height = 32,
+                                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                                },
+                                new TextBlock
+                                {
+                                    Text = $"Validation Errors ({errors.Count})",
+                                    FontSize = 18,
+                                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                                    Foreground = Avalonia.Media.Brushes.Red,
+                                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                                }
+                            }
+                        },
+                        new ScrollViewer
+                        {
+                            MaxHeight = 250,
+                            Content = new TextBlock
+                            {
+                                Text = errorsList,
+                                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                FontFamily = new Avalonia.Media.FontFamily("Consolas,Courier New,monospace"),
+                                FontSize = 11,
+                                Foreground = Avalonia.Media.Brushes.Red
+                            }
+                        },
+                        new TextBlock
+                        {
+                            Text = "Cannot save configuration. Please fix these errors before generating the XML file.",
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                            FontWeight = Avalonia.Media.FontWeight.Bold,
+                            Foreground = Avalonia.Media.Brushes.Red
+                        },
+                        new StackPanel
+                        {
+                            Orientation = Avalonia.Layout.Orientation.Horizontal,
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                            Spacing = 12,
+                            Margin = new Avalonia.Thickness(0, 15, 0, 0),
+                            Children =
+                            {
+                                new Button
+                                {
+                                    Content = "OK",
+                                    MinWidth = 140
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var buttonPanel = (StackPanel)((StackPanel)dialog.Content).Children[3];
+            var okButton = (Button)buttonPanel.Children[0];
+
+            okButton.Click += (s, e) => dialog.Close();
+
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+
         private async void OnProfileChanged()
         {
             // Skip during initialization to avoid redundant load
@@ -1233,10 +1419,10 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     _settingsManager.SetSelectedProfile(SelectedProfile);
 
                     // Load ranks for new profile
-                    var ranksPath = RanksXmlLoader.FindRanksXml(_gtaRootPath, SelectedProfile);
+                    var ranksPath = Parsers.RanksParser.FindRanksXml(_gtaRootPath, SelectedProfile);
                     if (ranksPath != null)
                     {
-                        var loadedRanks = RanksXmlLoader.LoadFromFile(ranksPath);
+                        var loadedRanks = Parsers.RanksParser.ParseRanksFile(ranksPath);
                         Logger.Info($"Loaded {loadedRanks.Count} ranks from {ranksPath}");
 
                         // Link station references for loaded ranks
@@ -1296,6 +1482,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 // Parse errors into structured items
                 ValidationErrorItems.Clear();
 
+                // Collect all items to be displayed
+                var itemsToAdd = new List<ValidationErrorItem>();
+
                 // Add items based on severity filter
                 switch (validationFilter)
                 {
@@ -1303,7 +1492,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                         // Only show errors
                         foreach (var error in report.Errors)
                         {
-                            ValidationErrorItems.Add(ParseValidationIssue(error));
+                            itemsToAdd.Add(ParseValidationIssue(error));
                         }
                         break;
 
@@ -1311,11 +1500,11 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                         // Show errors and warnings
                         foreach (var error in report.Errors)
                         {
-                            ValidationErrorItems.Add(ParseValidationIssue(error));
+                            itemsToAdd.Add(ParseValidationIssue(error));
                         }
                         foreach (var warning in report.Warnings)
                         {
-                            ValidationErrorItems.Add(ParseValidationIssue(warning));
+                            itemsToAdd.Add(ParseValidationIssue(warning));
                         }
                         break;
 
@@ -1324,25 +1513,43 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                         // Show everything (errors, warnings, and advisories)
                         foreach (var error in report.Errors)
                         {
-                            ValidationErrorItems.Add(ParseValidationIssue(error));
+                            itemsToAdd.Add(ParseValidationIssue(error));
                         }
                         foreach (var warning in report.Warnings)
                         {
-                            ValidationErrorItems.Add(ParseValidationIssue(warning));
+                            itemsToAdd.Add(ParseValidationIssue(warning));
                         }
                         foreach (var advisory in report.Advisories)
                         {
-                            ValidationErrorItems.Add(ParseValidationIssue(advisory));
+                            itemsToAdd.Add(ParseValidationIssue(advisory));
                         }
                         break;
+                }
+
+                // Filter out dismissed items if ShowDismissedValidations is false
+                foreach (var item in itemsToAdd)
+                {
+                    if (ShowDismissedValidations || !item.IsDismissed)
+                    {
+                        ValidationErrorItems.Add(item);
+                    }
                 }
 
                 // All validation issues are now reported through ValidationResult
                 // Tree items display visual indicators, but don't add separate issues
                 AddTreeItemValidationIssues(validationFilter);
 
-                // Update error count (errors, warnings, and advisories)
-                ValidationErrorCount = report.ErrorCount + report.WarningCount + report.AdvisoryCount;
+                // Update error count - only count non-dismissed items (or all items if showing dismissed)
+                if (ShowDismissedValidations)
+                {
+                    // Show total count including dismissed items
+                    ValidationErrorCount = itemsToAdd.Count;
+                }
+                else
+                {
+                    // Only count non-dismissed items
+                    ValidationErrorCount = itemsToAdd.Count(item => !item.IsDismissed);
+                }
 
                 if (report.HasIssues)
                 {
@@ -1413,6 +1620,22 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     issue.ItemName ?? ""));
             }
 
+            // Check if issue can be dismissed (warnings and advisories only, NOT errors)
+            // Dismissal requires RankId and Category at minimum (ItemName can be empty for general advisories)
+            RelayCommand? dismissCommand = null;
+            if (issue.Severity != ValidationSeverity.Error && issue.RankId != null && !string.IsNullOrEmpty(issue.Category))
+            {
+                dismissCommand = new RelayCommand(() => DismissValidationIssue(issue));
+            }
+
+            // Check if issue is currently dismissed
+            bool isDismissed = _dismissalService.IsDismissed(issue);
+
+            if (isDismissed)
+            {
+                Logger.Debug($"Issue marked as dismissed: {issue.Severity} - Category: '{issue.Category}', ItemName: '{issue.ItemName ?? ""}', RankName: '{issue.RankName}'");
+            }
+
             return new ValidationErrorItem
             {
                 Type = type,
@@ -1421,7 +1644,10 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 ItemName = issue.ItemName ?? "",
                 Message = issue.Message,
                 RemoveCommand = removeCommand,
-                ShowCommand = showCommand
+                ShowCommand = showCommand,
+                RankId = issue.RankId,
+                DismissCommand = dismissCommand,
+                IsDismissed = isDismissed
             };
         }
 
@@ -1777,6 +2003,14 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             // Check validation state and update UI
             CheckValidationState();
+
+            // If station assignments changed, refresh vehicle and outfit trees to show new stations
+            if (sender == StationAssignmentsViewModel)
+            {
+                VehiclesViewModel?.RefreshVehicleTree();
+                OutfitsViewModel?.RefreshOutfitTree();
+                Logger.Debug("Refreshed vehicle and outfit trees after station assignment change");
+            }
         }
 
         /// <summary>
