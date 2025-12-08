@@ -168,19 +168,12 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                     // Treat null as 0
                     SelectedTreeItem.Rank.RequiredPoints = value ?? 0;
-                    ValidateRequiredPoints();
-                    UpdateTreeItemValidation(SelectedTreeItem);
                     SelectedTreeItem.UpdateDisplayName();
 
-                    // If this is a pay band, update parent's display and validation too
+                    // If this is a pay band, update parent's display too
                     if (SelectedTreeItem.Rank.Parent != null)
                     {
                         UpdateParentRankDisplay(SelectedTreeItem.Rank.Parent);
-                        var parentTreeItem = FindTreeItem(SelectedTreeItem.Rank.Parent.Id);
-                        if (parentTreeItem != null)
-                        {
-                            UpdateTreeItemValidation(parentTreeItem);
-                        }
                     }
 
                     _hasUncommittedChanges = true;
@@ -203,19 +196,12 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                     // Treat null as 0
                     SelectedTreeItem.Rank.Salary = value ?? 0;
-                    ValidateSalary();
-                    UpdateTreeItemValidation(SelectedTreeItem);
                     SelectedTreeItem.UpdateDisplayName();
 
-                    // If this is a pay band, update parent's display and validation too
+                    // If this is a pay band, update parent's display too
                     if (SelectedTreeItem.Rank.Parent != null)
                     {
                         UpdateParentRankDisplay(SelectedTreeItem.Rank.Parent);
-                        var parentTreeItem = FindTreeItem(SelectedTreeItem.Rank.Parent.Id);
-                        if (parentTreeItem != null)
-                        {
-                            UpdateTreeItemValidation(parentTreeItem);
-                        }
                     }
 
                     _hasUncommittedChanges = true;

@@ -156,55 +156,79 @@
                         <TextBlock Text="Required Points:"
                                   Foreground="{StaticResource TextWhiteBrush}"
                                   IsVisible="{Binding ShowXpSalaryFields}"/>
-                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                   IsVisible="{Binding ShowXpSalaryFields}">
-                            <NumericUpDown Value="{Binding RequiredPoints}"
+                        <Grid IsVisible="{Binding ShowXpSalaryFields}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="20" MinHeight="20"/>
+                            </Grid.RowDefinitions>
+
+                            <NumericUpDown Grid.Row="0"
+                                          Value="{Binding RequiredPoints}"
                                           Minimum="0"
                                           Maximum="999999"
                                           Width="100"
+                                          HorizontalAlignment="Left"
                                           ShowButtonSpinner="False"
                                           BorderBrush="{Binding RequiredPointsBorderBrush}"
                                           BorderThickness="{Binding RequiredPointsBorderThickness}"
                                           LostFocus="OnTextBoxLostFocus"/>
-                            <Image Source="/Resources/Icons/error-icon.png"
-                                  Width="14"
-                                  Height="14"
-                                  VerticalAlignment="Center"
-                                  IsVisible="{Binding RequiredPointsValidation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                            <TextBlock Text="{Binding RequiredPointsValidation}"
-                                      Foreground="{StaticResource ErrorRedBrush}"
-                                      FontSize="11"
-                                      VerticalAlignment="Center"
-                                      TextWrapping="Wrap"
-                                      MaxWidth="130"/>
-                        </StackPanel>
+
+                            <StackPanel Grid.Row="1"
+                                       Orientation="Horizontal"
+                                       Spacing="6"
+                                       Margin="0,2,0,0">
+                                <Image Source="/Resources/Icons/error-icon.png"
+                                      Width="14"
+                                      Height="14"
+                                      VerticalAlignment="Top"
+                                      IsVisible="{Binding RequiredPointsValidation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                <TextBlock Text="{Binding RequiredPointsValidation}"
+                                          Foreground="{StaticResource ErrorRedBrush}"
+                                          FontSize="11"
+                                          VerticalAlignment="Top"
+                                          TextWrapping="Wrap"
+                                          MaxWidth="250"/>
+                            </StackPanel>
+                        </Grid>
 
                         <!-- Salary (conditionally visible) -->
                         <TextBlock Text="Salary ($):"
                                   Foreground="{StaticResource TextWhiteBrush}"
                                   IsVisible="{Binding ShowXpSalaryFields}"/>
-                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                   IsVisible="{Binding ShowXpSalaryFields}">
-                            <NumericUpDown Value="{Binding Salary}"
+                        <Grid IsVisible="{Binding ShowXpSalaryFields}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="20" MinHeight="20"/>
+                            </Grid.RowDefinitions>
+
+                            <NumericUpDown Grid.Row="0"
+                                          Value="{Binding Salary}"
                                           Minimum="0"
                                           Maximum="999999"
                                           Width="100"
+                                          HorizontalAlignment="Left"
                                           ShowButtonSpinner="False"
                                           BorderBrush="{Binding SalaryBorderBrush}"
                                           BorderThickness="{Binding SalaryBorderThickness}"
                                           LostFocus="OnTextBoxLostFocus"/>
-                            <Image Source="/Resources/Icons/error-icon.png"
-                                  Width="14"
-                                  Height="14"
-                                  VerticalAlignment="Center"
-                                  IsVisible="{Binding SalaryValidation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                            <TextBlock Text="{Binding SalaryValidation}"
-                                      Foreground="{StaticResource ErrorRedBrush}"
-                                      FontSize="11"
-                                      VerticalAlignment="Center"
-                                      TextWrapping="Wrap"
-                                      MaxWidth="130"/>
-                        </StackPanel>
+
+                            <StackPanel Grid.Row="1"
+                                       Orientation="Horizontal"
+                                       Spacing="6"
+                                       Margin="0,2,0,0">
+                                <Image Source="/Resources/Icons/error-icon.png"
+                                      Width="14"
+                                      Height="14"
+                                      VerticalAlignment="Top"
+                                      IsVisible="{Binding SalaryValidation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                <TextBlock Text="{Binding SalaryValidation}"
+                                          Foreground="{StaticResource ErrorRedBrush}"
+                                          FontSize="11"
+                                          VerticalAlignment="Top"
+                                          TextWrapping="Wrap"
+                                          MaxWidth="250"/>
+                            </StackPanel>
+                        </Grid>
 
                         <!-- Advisories -->
                         <StackPanel Orientation="Horizontal"
