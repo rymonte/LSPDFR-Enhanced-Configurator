@@ -825,24 +825,19 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void CheckAdvisories()
         {
-            VehicleAdvisory = string.Empty;
-
-            if (SelectedRank == null || _validationService == null) return;
+            if (SelectedRank == null || _validationService == null)
+            {
+                VehicleAdvisory = string.Empty;
+                return;
+            }
 
             // Use ValidationService to validate with advisory context
-            var validationResult = _validationService.ValidateSingleRank(SelectedRank, _ranks, ValidationContext.Full);
+            var validationResult = _validationService.ValidateSingleRank(
+                SelectedRank, _ranks, ValidationContext.Full);
 
-            // Find advisory/warning issues related to vehicles
-            var vehicleAdvisories = validationResult.Issues
-                .Where(i => (i.Severity == ValidationSeverity.Advisory || i.Severity == ValidationSeverity.Warning) &&
-                           i.RankId == SelectedRank.Id &&
-                           i.Category == "Vehicle")
-                .ToList();
-
-            if (vehicleAdvisories.Any())
-            {
-                VehicleAdvisory = vehicleAdvisories.First().Message;
-            }
+            // Get advisories using centralized extension method
+            VehicleAdvisory = validationResult.GetFirstAdvisoryMessage(
+                SelectedRank.Id, "Vehicle");
         }
 
         #endregion

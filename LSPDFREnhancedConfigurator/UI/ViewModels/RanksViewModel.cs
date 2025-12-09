@@ -1471,37 +1471,23 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void CheckAdvisories()
         {
-            StationAdvisory = string.Empty;
-            SalaryAdvisory = string.Empty;
-
-            if (SelectedTreeItem?.Rank == null) return;
+            if (SelectedTreeItem?.Rank == null)
+            {
+                StationAdvisory = string.Empty;
+                SalaryAdvisory = string.Empty;
+                return;
+            }
 
             // Use ValidationService to validate with advisory context
-            var validationResult = _validationService.ValidateSingleRank(SelectedTreeItem.Rank, _ranks, ValidationContext.Full);
+            var validationResult = _validationService.ValidateSingleRank(
+                SelectedTreeItem.Rank, _ranks, ValidationContext.Full);
 
-            // Find advisory/warning issues related to stations
-            var stationAdvisories = validationResult.Issues
-                .Where(i => (i.Severity == ValidationSeverity.Advisory || i.Severity == ValidationSeverity.Warning) &&
-                           i.RankId == SelectedTreeItem.Rank.Id &&
-                           i.Category == "Station")
-                .ToList();
+            // Get advisories using centralized extension methods
+            StationAdvisory = validationResult.GetFirstAdvisoryMessage(
+                SelectedTreeItem.Rank.Id, "Station");
 
-            if (stationAdvisories.Any())
-            {
-                StationAdvisory = stationAdvisories.First().Message;
-            }
-
-            // Find warnings related to salary decrease (lower than previous)
-            var salaryWarnings = validationResult.Issues
-                .Where(i => i.Severity == ValidationSeverity.Warning &&
-                           i.RankId == SelectedTreeItem.Rank.Id &&
-                           (i.PropertyName == "Salary" || i.Message.Contains("Salary is lower")))
-                .ToList();
-
-            if (salaryWarnings.Any())
-            {
-                SalaryAdvisory = salaryWarnings.First().Message;
-            }
+            SalaryAdvisory = validationResult.GetFirstAdvisoryForProperty(
+                SelectedTreeItem.Rank.Id, "Salary");
         }
 
         private void UpdateCommandStates()

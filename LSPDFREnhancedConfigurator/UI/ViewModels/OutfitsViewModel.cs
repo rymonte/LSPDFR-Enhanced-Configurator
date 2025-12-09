@@ -797,24 +797,19 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void CheckAdvisories()
         {
-            OutfitAdvisory = string.Empty;
-
-            if (SelectedRank == null || _validationService == null) return;
+            if (SelectedRank == null || _validationService == null)
+            {
+                OutfitAdvisory = string.Empty;
+                return;
+            }
 
             // Use ValidationService to validate with advisory context
-            var validationResult = _validationService.ValidateSingleRank(SelectedRank, _ranks, ValidationContext.Full);
+            var validationResult = _validationService.ValidateSingleRank(
+                SelectedRank, _ranks, ValidationContext.Full);
 
-            // Find advisory/warning issues related to outfits
-            var outfitAdvisories = validationResult.Issues
-                .Where(i => (i.Severity == ValidationSeverity.Advisory || i.Severity == ValidationSeverity.Warning) &&
-                           i.RankId == SelectedRank.Id &&
-                           i.Category == "Outfit")
-                .ToList();
-
-            if (outfitAdvisories.Any())
-            {
-                OutfitAdvisory = outfitAdvisories.First().Message;
-            }
+            // Get advisories using centralized extension method
+            OutfitAdvisory = validationResult.GetFirstAdvisoryMessage(
+                SelectedRank.Id, "Outfit");
         }
 
         #endregion
