@@ -1,0 +1,468 @@
+using FluentAssertions;
+using LSPDFREnhancedConfigurator.Models;
+using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
+using LSPDFREnhancedConfigurator.Services.Validation.Rules;
+using Moq;
+
+namespace LSPDFREnhancedConfigurator.Tests.Services.Validation.Rules
+{
+    public class AdvisoryRuleTests
+    {
+        private readonly AdvisoryRule _rule;
+        private readonly Mock<DataLoadingService> _mockDataService;
+
+        public AdvisoryRuleTests()
+        {
+            _rule = new AdvisoryRule();
+            var mockFileDiscovery = new Mock<FileDiscoveryService>("C:\\fake");
+            _mockDataService = new Mock<DataLoadingService>(mockFileDiscovery.Object);
+        }
+
+        #region No Vehicles Advisory
+
+        [Fact]
+        public void Validate_FirstRankWithNoVehicles_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var ranks = new List<RankHierarchy> { rank1 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Officer" &&
+                a.Category == "Vehicle" &&
+                a.Message.Contains("has no vehicles assigned"));
+        }
+
+        [Fact]
+        public void Validate_RankWithNoVehicles_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" });
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            // rank2 has no vehicles
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Detective" &&
+                a.Category == "Vehicle" &&
+                a.Message.Contains("has no vehicles assigned"));
+        }
+
+        #endregion
+
+        #region No Outfits Advisory
+
+        [Fact]
+        public void Validate_FirstRankWithNoOutfits_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var ranks = new List<RankHierarchy> { rank1 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Officer" &&
+                a.Category == "Outfit" &&
+                a.Message.Contains("has no outfits assigned"));
+        }
+
+        [Fact]
+        public void Validate_RankWithNoOutfits_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Outfits.Add("Police.Default");
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            // rank2 has no outfits
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Detective" &&
+                a.Category == "Outfit" &&
+                a.Message.Contains("has no outfits assigned"));
+        }
+
+        #endregion
+
+        #region Station Count Decreased Advisory
+
+        [Fact]
+        public void Validate_DecreasedStationCount_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            rank1.Stations.Add(new StationAssignment { StationName = "Vespucci" });
+
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            rank2.Stations.Add(new StationAssignment { StationName = "Mission Row" }); // Only 1 station
+
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Detective" &&
+                a.Category == "Station" &&
+                a.Message.Contains("has 1 station(s)") &&
+                a.Message.Contains("previous rank 'Officer' had 2 station(s)"));
+        }
+
+        [Fact]
+        public void Validate_IncreasedStationCount_NoAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            rank2.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            rank2.Stations.Add(new StationAssignment { StationName = "Vespucci" });
+
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().NotContain(a =>
+                a.RankName == "Detective" &&
+                a.Category == "Station");
+        }
+
+        #endregion
+
+        #region Removed Vehicles Advisory
+
+        [Fact]
+        public void Validate_RemovedVehicles_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" });
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE2", DisplayName = "Police 2" });
+
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            rank2.Vehicles.Add(new Vehicle { Model = "POLICE2", DisplayName = "Police 2" }); // POLICE removed
+
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Detective" &&
+                a.Category == "Vehicle" &&
+                a.Message.Contains("is missing 1 vehicle(s)") &&
+                a.Message.Contains("POLICE"));
+        }
+
+        [Fact]
+        public void Validate_AddedVehicles_NoAdvisoryForRemoval()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" });
+
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            rank2.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" });
+            rank2.Vehicles.Add(new Vehicle { Model = "POLICE2", DisplayName = "Police 2" });
+
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().NotContain(a =>
+                a.RankName == "Detective" &&
+                a.Message.Contains("is missing") &&
+                a.Message.Contains("vehicle"));
+        }
+
+        [Fact]
+        public void Validate_ManyRemovedVehicles_TruncatesListInMessage()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" });
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE2", DisplayName = "Police 2" });
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE3", DisplayName = "Police 3" });
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE4", DisplayName = "Police 4" });
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE5", DisplayName = "Police 5" });
+
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            // No vehicles
+
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Detective" &&
+                a.Message.Contains("and 2 more"));
+        }
+
+        #endregion
+
+        #region Vehicle Count Decreased Advisory
+
+        [Fact]
+        public void Validate_DecreasedVehicleCountWithoutRemoval_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" });
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" }); // Duplicate model
+
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            rank2.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" });
+
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            // Should trigger advisory since total vehicle count decreased (2 slots -> 1 slot)
+            // even though the same model is available, reduced slots is worth noting
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Detective" &&
+                a.Category == "Vehicle" &&
+                a.Message.Contains("has 1 vehicle(s)") &&
+                a.Message.Contains("had 2 vehicle(s)"));
+        }
+
+        #endregion
+
+        #region Removed Outfits Advisory
+
+        [Fact]
+        public void Validate_RemovedOutfits_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Outfits.Add("Police.Default");
+            rank1.Outfits.Add("Police.Summer");
+
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            rank2.Outfits.Add("Police.Summer"); // Police.Default removed
+
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Detective" &&
+                a.Category == "Outfit" &&
+                a.Message.Contains("is missing 1 outfit(s)") &&
+                a.Message.Contains("Police.Default"));
+        }
+
+        [Fact]
+        public void Validate_AddedOutfits_NoAdvisoryForRemoval()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Outfits.Add("Police.Default");
+
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            rank2.Outfits.Add("Police.Default");
+            rank2.Outfits.Add("Police.Summer");
+
+            var ranks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().NotContain(a =>
+                a.RankName == "Detective" &&
+                a.Message.Contains("is missing") &&
+                a.Message.Contains("outfit"));
+        }
+
+        #endregion
+
+        #region Parent Rank with Pay Bands
+
+        [Fact]
+        public void Validate_ParentRankWithPayBands_ValidatesPayBands()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+
+            var payBand1 = new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 0, Salary = 1000 };
+            payBand1.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" });
+
+            var payBand2 = new RankHierarchy { Id = "2", Name = "Detective II", RequiredPoints = 100, Salary = 2000 };
+            // payBand2 has no vehicles - should trigger advisory
+
+            parent.PayBands.Add(payBand1);
+            parent.PayBands.Add(payBand2);
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Detective II" &&
+                a.Message.Contains("has no vehicles assigned"));
+        }
+
+        #endregion
+
+        #region ValidateSingleRank Tests
+
+        [Fact]
+        public void ValidateSingleRank_NoVehicles_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(rank, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Officer" &&
+                a.Category == "Vehicle" &&
+                a.Message.Contains("has no vehicles assigned"));
+        }
+
+        [Fact]
+        public void ValidateSingleRank_NoOutfits_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(rank, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Officer" &&
+                a.Category == "Outfit" &&
+                a.Message.Contains("has no outfits assigned"));
+        }
+
+        [Fact]
+        public void ValidateSingleRank_RemovedVehiclesFromPrevious_ReturnsAdvisory()
+        {
+            // Arrange
+            var rank1 = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police" });
+            rank1.Vehicles.Add(new Vehicle { Model = "POLICE2", DisplayName = "Police 2" });
+
+            var rank2 = new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 };
+            rank2.Vehicles.Add(new Vehicle { Model = "POLICE2", DisplayName = "Police 2" });
+
+            var allRanks = new List<RankHierarchy> { rank1, rank2 };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(rank2, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().Contain(a =>
+                a.RankName == "Detective" &&
+                a.Message.Contains("is missing 1 vehicle(s)") &&
+                a.Message.Contains("POLICE"));
+        }
+
+        [Fact]
+        public void ValidateSingleRank_ParentRankWithPayBands_SkipsValidation()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            parent.PayBands.Add(new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 0, Salary = 1000 });
+
+            var allRanks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(parent, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.Advisories.Should().BeEmpty();
+        }
+
+        #endregion
+
+        #region Rule Metadata Tests
+
+        [Fact]
+        public void RuleId_ReturnsExpectedValue()
+        {
+            // Act & Assert
+            _rule.RuleId.Should().Be("ADVISORY_CHECKS");
+        }
+
+        [Fact]
+        public void ApplicableContexts_IncludesExpectedContexts()
+        {
+            // Act & Assert
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.Full);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.Startup);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.AdvisoryOnly);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.RealTime);
+            _rule.ApplicableContexts.Should().NotContain(ValidationContext.PreGenerate);
+        }
+
+        #endregion
+    }
+}

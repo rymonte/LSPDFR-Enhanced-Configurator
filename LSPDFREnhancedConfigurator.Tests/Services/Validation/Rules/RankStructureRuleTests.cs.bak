@@ -1,0 +1,312 @@
+using FluentAssertions;
+using LSPDFREnhancedConfigurator.Models;
+using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
+using LSPDFREnhancedConfigurator.Services.Validation.Rules;
+using Moq;
+
+namespace LSPDFREnhancedConfigurator.Tests.Services.Validation.Rules
+{
+    public class RankStructureRuleTests
+    {
+        private readonly RankStructureRule _rule;
+        private readonly Mock<DataLoadingService> _mockDataService;
+
+        public RankStructureRuleTests()
+        {
+            _rule = new RankStructureRule();
+            var mockFileDiscovery = new Mock<FileDiscoveryService>("C:\\fake");
+            _mockDataService = new Mock<DataLoadingService>(mockFileDiscovery.Object);
+        }
+
+        [Fact]
+        public void Validate_EmptyRankName_ReturnsError()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "", RequiredPoints = 0, Salary = 1000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().HaveCount(1);
+            var error = result.Errors.First();
+            error.Message.Should().Contain("Rank name cannot be empty");
+            error.Severity.Should().Be(ValidationSeverity.Error);
+            error.PropertyName.Should().Be("Name");
+        }
+
+        [Fact]
+        public void Validate_DuplicateRankNames_ReturnsWarnings()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 },
+                new RankHierarchy { Id = "2", Name = "Officer", RequiredPoints = 100, Salary = 2000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().HaveCount(2);
+            result.Warnings.Should().AllSatisfy(w =>
+            {
+                w.Message.Should().Contain("Duplicate rank name 'Officer'");
+                w.Severity.Should().Be(ValidationSeverity.Warning);
+                w.RankName.Should().Be("Officer");
+            });
+        }
+
+        [Fact]
+        public void Validate_DuplicateRankNames_CaseInsensitive()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 },
+                new RankHierarchy { Id = "2", Name = "OFFICER", RequiredPoints = 100, Salary = 2000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().HaveCount(2);
+        }
+
+        [Fact]
+        public void Validate_UniqueRankNames_NoIssues()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 },
+                new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+            result.Issues.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Validate_ParentRankWithPayBands_ExcludesParentFromDuplicateCheck()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            parent.PayBands.Add(new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 0, Salary = 1000, Parent = parent });
+            parent.PayBands.Add(new RankHierarchy { Id = "2", Name = "Detective II", RequiredPoints = 100, Salary = 2000, Parent = parent });
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+            result.Warnings.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Validate_DuplicatePayBandNamesWithinParent_ReturnsWarnings()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            parent.PayBands.Add(new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 0, Salary = 1000 });
+            parent.PayBands.Add(new RankHierarchy { Id = "2", Name = "Detective I", RequiredPoints = 100, Salary = 2000 });
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            // Note: Each duplicate pay band generates 2 warnings:
+            // 1. From global rank name check (includes pay bands)
+            // 2. From pay band-specific duplicate check
+            result.Warnings.Should().HaveCount(4);
+            result.Warnings.Should().Contain(w => w.Message.Contains("Duplicate rank name 'Detective I'"));
+            result.Warnings.Should().Contain(w => w.Message.Contains("Duplicate pay band name 'Detective I'"));
+        }
+
+        [Fact]
+        public void Validate_EmptyParentRankName_ReturnsError()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "",
+                IsParent = true
+            };
+            parent.PayBands.Add(new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 0, Salary = 1000 });
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e => e.Message.Contains("Parent rank name cannot be empty"));
+        }
+
+        [Fact]
+        public void Validate_EmptyPayBandName_ReturnsError()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            parent.PayBands.Add(new RankHierarchy { Id = "1", Name = "", RequiredPoints = 0, Salary = 1000 });
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e => e.Message.Contains("Pay band in 'Detective' has empty name"));
+        }
+
+        [Fact]
+        public void ValidateSingleRank_DuplicateNameInOtherRanks_ReturnsWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy>
+            {
+                rank,
+                new RankHierarchy { Id = "2", Name = "Officer", RequiredPoints = 100, Salary = 2000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(rank, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().HaveCount(1);
+            result.Warnings.First().Message.Should().Contain("Duplicate rank name 'Officer'");
+        }
+
+        [Fact]
+        public void ValidateSingleRank_NoOtherRanksWithSameName_NoIssues()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy>
+            {
+                rank,
+                new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(rank, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public void ValidateProperty_EmptyName_ReturnsError()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateProperty(rank, "Name", "", allRanks, result, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().HaveCount(1);
+            result.Errors.First().Message.Should().Contain("Rank name cannot be empty");
+        }
+
+        [Fact]
+        public void ValidateProperty_DuplicateName_ReturnsWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy>
+            {
+                rank,
+                new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateProperty(rank, "Name", "Detective", allRanks, result, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().HaveCount(1);
+            result.Warnings.First().Message.Should().Contain("Duplicate rank name 'Detective'");
+        }
+
+        [Fact]
+        public void ValidateProperty_UniqueName_NoIssues()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy>
+            {
+                rank,
+                new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateProperty(rank, "Name", "Sergeant", allRanks, result, _mockDataService.Object);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public void RuleId_ReturnsExpectedValue()
+        {
+            // Act & Assert
+            _rule.RuleId.Should().Be("RANK_STRUCTURE");
+        }
+
+        [Fact]
+        public void ApplicableContexts_IncludesExpectedContexts()
+        {
+            // Act & Assert
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.Full);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.Startup);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.PreGenerate);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.RealTime);
+        }
+    }
+}

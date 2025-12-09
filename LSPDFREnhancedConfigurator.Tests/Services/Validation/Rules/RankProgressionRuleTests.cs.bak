@@ -1,0 +1,350 @@
+using FluentAssertions;
+using LSPDFREnhancedConfigurator.Models;
+using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
+using LSPDFREnhancedConfigurator.Services.Validation.Rules;
+using Moq;
+
+namespace LSPDFREnhancedConfigurator.Tests.Services.Validation.Rules
+{
+    public class RankProgressionRuleTests
+    {
+        private readonly RankProgressionRule _rule;
+        private readonly Mock<DataLoadingService> _mockDataService;
+
+        public RankProgressionRuleTests()
+        {
+            _rule = new RankProgressionRule();
+            var mockFileDiscovery = new Mock<FileDiscoveryService>("C:\\fake");
+            _mockDataService = new Mock<DataLoadingService>(mockFileDiscovery.Object);
+        }
+
+        [Fact]
+        public void Validate_FirstRankNotZeroXP_ReturnsError()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 100, Salary = 1000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("First rank") &&
+                e.Message.Contains("must start at XP 0"));
+        }
+
+        [Fact]
+        public void Validate_FirstRankZeroXP_NoIssues()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Validate_DecreasingXPProgression_ReturnsError()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 },
+                new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 },
+                new RankHierarchy { Id = "3", Name = "Sergeant", RequiredPoints = 50, Salary = 3000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("Sergeant") &&
+                e.Message.Contains("must have Required Points greater"));
+        }
+
+        [Fact]
+        public void Validate_IncreasingXPProgression_NoIssues()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 },
+                new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 },
+                new RankHierarchy { Id = "3", Name = "Sergeant", RequiredPoints = 200, Salary = 3000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Validate_DecreasingSalary_ReturnsWarning()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 2000 },
+                new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 1000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().Contain(w =>
+                w.Message.Contains("Detective") &&
+                w.Message.Contains("lower salary") &&
+                w.Severity == ValidationSeverity.Warning);
+        }
+
+        [Fact]
+        public void Validate_IncreasingSalary_NoIssues()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 },
+                new RankHierarchy { Id = "2", Name = "Detective", RequiredPoints = 100, Salary = 2000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Validate_NegativeXP_ReturnsError()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = -100, Salary = 1000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("Officer") &&
+                e.Message.Contains("has negative Required Points"));
+        }
+
+        [Fact]
+        public void Validate_NegativeSalary_ReturnsError()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = -1000 }
+            };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("Officer") &&
+                e.Message.Contains("has negative Salary"));
+        }
+
+        [Fact]
+        public void Validate_ParentWithSinglePayBand_ReturnsError()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            parent.PayBands.Add(new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 0, Salary = 1000 });
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("Detective") &&
+                e.Message.Contains("must have at least 2 pay bands"));
+        }
+
+        [Fact]
+        public void Validate_ParentWithMultiplePayBands_NoIssue()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            parent.PayBands.Add(new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 0, Salary = 1000 });
+            parent.PayBands.Add(new RankHierarchy { Id = "2", Name = "Detective II", RequiredPoints = 100, Salary = 2000 });
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Validate_PayBandsWithDecreasingXP_ReturnsError()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            parent.PayBands.Add(new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 100, Salary = 1000 });
+            parent.PayBands.Add(new RankHierarchy { Id = "2", Name = "Detective II", RequiredPoints = 50, Salary = 2000 });
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("Detective II") &&
+                e.Message.Contains("must have higher XP"));
+        }
+
+        [Fact]
+        public void Validate_FirstPayBandNotZeroXP_ReturnsError()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            parent.PayBands.Add(new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 50, Salary = 1000 });
+            parent.PayBands.Add(new RankHierarchy { Id = "2", Name = "Detective II", RequiredPoints = 100, Salary = 2000 });
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("First") &&
+                e.Message.Contains("must start at XP 0"));
+        }
+
+        [Fact]
+        public void ValidateSingleRank_NegativeXP_ReturnsError()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = -50, Salary = 1000 };
+            var allRanks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(rank, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e => e.Message.Contains("Required Points cannot be negative"));
+        }
+
+        [Fact]
+        public void ValidateSingleRank_NegativeSalary_ReturnsError()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = -1000 };
+            var allRanks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(rank, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e => e.Message.Contains("Salary cannot be negative"));
+        }
+
+        [Fact]
+        public void ValidateProperty_NegativeRequiredPoints_ReturnsError()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateProperty(rank, "RequiredPoints", -100, allRanks, result, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e => e.Message.Contains("Required Points cannot be negative"));
+        }
+
+        [Fact]
+        public void ValidateProperty_NegativeSalary_ReturnsError()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateProperty(rank, "Salary", -1000, allRanks, result, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e => e.Message.Contains("Salary cannot be negative"));
+        }
+
+        [Fact]
+        public void RuleId_ReturnsExpectedValue()
+        {
+            // Act & Assert
+            _rule.RuleId.Should().Be("RANK_PROGRESSION");
+        }
+
+        [Fact]
+        public void ApplicableContexts_IncludesExpectedContexts()
+        {
+            // Act & Assert
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.Full);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.Startup);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.PreGenerate);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.RealTime);
+        }
+    }
+}

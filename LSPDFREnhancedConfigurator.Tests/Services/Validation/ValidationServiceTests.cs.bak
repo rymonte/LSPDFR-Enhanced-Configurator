@@ -1,0 +1,560 @@
+using System.Collections.Generic;
+using System.Linq;
+using FluentAssertions;
+using LSPDFREnhancedConfigurator.Models;
+using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
+using LSPDFREnhancedConfigurator.Services.Validation.Rules;
+using Moq;
+using Xunit;
+
+namespace LSPDFREnhancedConfigurator.Tests.Services.Validation
+{
+    public class ValidationServiceTests
+    {
+        private readonly Mock<DataLoadingService> _mockDataService;
+        private readonly ValidationService _validationService;
+
+        public ValidationServiceTests()
+        {
+            // Create mock data service (with null parameter since we won't use it in tests)
+            _mockDataService = new Mock<DataLoadingService>(null);
+
+            // Setup minimal mock data to prevent null reference exceptions
+            _mockDataService.Setup(x => x.AllVehicles).Returns(new List<Vehicle>());
+            _mockDataService.Setup(x => x.Stations).Returns(new List<Station>());
+            _mockDataService.Setup(x => x.OutfitVariations).Returns(new List<OutfitVariation>());
+
+            // Create validation service
+            _validationService = new ValidationService(_mockDataService.Object);
+        }
+
+        #region Constructor and Rule Registration
+
+        [Fact]
+        public void Constructor_RegistersDefaultRules()
+        {
+            // Act
+            var rules = _validationService.GetRegisteredRules();
+
+            // Assert
+            rules.Should().NotBeEmpty();
+            rules.Should().HaveCountGreaterOrEqualTo(4); // Structure, Progression, Reference, Advisory
+
+            // Verify specific rules are registered
+            rules.Should().Contain(r => r.RuleId == "RANK_STRUCTURE");
+            rules.Should().Contain(r => r.RuleId == "RANK_PROGRESSION");
+            rules.Should().Contain(r => r.RuleId == "REFERENCE_VALIDATION");
+            rules.Should().Contain(r => r.RuleId == "ADVISORY_CHECKS");
+        }
+
+        [Fact]
+        public void RegisterRule_AddsNewRule()
+        {
+            // Arrange
+            var mockRule = new Mock<IValidationRule>();
+            mockRule.Setup(r => r.RuleId).Returns("TEST_RULE");
+            mockRule.Setup(r => r.RuleName).Returns("Test Rule");
+            mockRule.Setup(r => r.ApplicableContexts).Returns(new[] { ValidationContext.Full });
+
+            var initialCount = _validationService.GetRegisteredRules().Count;
+
+            // Act
+            _validationService.RegisterRule(mockRule.Object);
+
+            // Assert
+            var rules = _validationService.GetRegisteredRules();
+            rules.Should().HaveCount(initialCount + 1);
+            rules.Should().Contain(r => r.RuleId == "TEST_RULE");
+        }
+
+        [Fact]
+        public void RegisterRule_NullRule_DoesNotAdd()
+        {
+            // Arrange
+            var initialCount = _validationService.GetRegisteredRules().Count;
+
+            // Act
+            _validationService.RegisterRule(null);
+
+            // Assert
+            _validationService.GetRegisteredRules().Should().HaveCount(initialCount);
+        }
+
+        [Fact]
+        public void RegisterRule_DuplicateRuleId_DoesNotAddSecond()
+        {
+            // Arrange
+            var mockRule1 = new Mock<IValidationRule>();
+            mockRule1.Setup(r => r.RuleId).Returns("DUPLICATE_RULE");
+            mockRule1.Setup(r => r.RuleName).Returns("First Rule");
+            mockRule1.Setup(r => r.ApplicableContexts).Returns(new[] { ValidationContext.Full });
+
+            var mockRule2 = new Mock<IValidationRule>();
+            mockRule2.Setup(r => r.RuleId).Returns("DUPLICATE_RULE");
+            mockRule2.Setup(r => r.RuleName).Returns("Second Rule");
+            mockRule2.Setup(r => r.ApplicableContexts).Returns(new[] { ValidationContext.Full });
+
+            // Act
+            _validationService.RegisterRule(mockRule1.Object);
+            var countAfterFirst = _validationService.GetRegisteredRules().Count;
+
+            _validationService.RegisterRule(mockRule2.Object);
+            var countAfterSecond = _validationService.GetRegisteredRules().Count;
+
+            // Assert
+            countAfterSecond.Should().Be(countAfterFirst);
+            _validationService.GetRegisteredRules()
+                .Where(r => r.RuleId == "DUPLICATE_RULE")
+                .Should().HaveCount(1);
+        }
+
+        [Fact]
+        public void UnregisterRule_ExistingRule_RemovesAndReturnsTrue()
+        {
+            // Act
+            var result = _validationService.UnregisterRule("RANK_STRUCTURE");
+
+            // Assert
+            result.Should().BeTrue();
+            _validationService.GetRegisteredRules()
+                .Should().NotContain(r => r.RuleId == "RANK_STRUCTURE");
+        }
+
+        [Fact]
+        public void UnregisterRule_NonExistentRule_ReturnsFalse()
+        {
+            // Act
+            var result = _validationService.UnregisterRule("NON_EXISTENT_RULE");
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        #endregion
+
+        #region Context Filtering
+
+        [Fact]
+        public void GetRulesForContext_Full_ReturnsAllRules()
+        {
+            // Act
+            var rules = _validationService.GetRulesForContext(ValidationContext.Full);
+
+            // Assert
+            rules.Should().NotBeEmpty();
+            // All default rules should apply to Full context
+            rules.Should().Contain(r => r.RuleId == "RANK_STRUCTURE");
+            rules.Should().Contain(r => r.RuleId == "RANK_PROGRESSION");
+            rules.Should().Contain(r => r.RuleId == "REFERENCE_VALIDATION");
+            rules.Should().Contain(r => r.RuleId == "ADVISORY_CHECKS");
+        }
+
+        [Fact]
+        public void GetRulesForContext_Startup_ReturnsApplicableRules()
+        {
+            // Act
+            var rules = _validationService.GetRulesForContext(ValidationContext.Startup);
+
+            // Assert
+            rules.Should().NotBeEmpty();
+            rules.Should().Contain(r => r.RuleId == "RANK_STRUCTURE");
+            rules.Should().Contain(r => r.RuleId == "RANK_PROGRESSION");
+            rules.Should().Contain(r => r.RuleId == "REFERENCE_VALIDATION");
+            rules.Should().Contain(r => r.RuleId == "ADVISORY_CHECKS");
+        }
+
+        [Fact]
+        public void GetRulesForContext_RealTime_ReturnsLightweightRules()
+        {
+            // Act
+            var rules = _validationService.GetRulesForContext(ValidationContext.RealTime);
+
+            // Assert
+            rules.Should().NotBeEmpty();
+            rules.Should().Contain(r => r.RuleId == "RANK_STRUCTURE");
+            rules.Should().Contain(r => r.RuleId == "RANK_PROGRESSION");
+            rules.Should().Contain(r => r.RuleId == "ADVISORY_CHECKS");
+
+            // ReferenceValidation should not be in RealTime context (too expensive)
+            rules.Should().NotContain(r => r.RuleId == "REFERENCE_VALIDATION");
+        }
+
+        [Fact]
+        public void GetRulesForContext_PreGenerate_ReturnsBlockingRules()
+        {
+            // Act
+            var rules = _validationService.GetRulesForContext(ValidationContext.PreGenerate);
+
+            // Assert
+            rules.Should().NotBeEmpty();
+            rules.Should().Contain(r => r.RuleId == "RANK_STRUCTURE");
+            rules.Should().Contain(r => r.RuleId == "RANK_PROGRESSION");
+            rules.Should().Contain(r => r.RuleId == "REFERENCE_VALIDATION");
+
+            // Advisory should not be in PreGenerate (non-blocking)
+            rules.Should().NotContain(r => r.RuleId == "ADVISORY_CHECKS");
+        }
+
+        [Fact]
+        public void GetRulesForContext_AdvisoryOnly_ReturnsOnlyAdvisoryRule()
+        {
+            // Act
+            var rules = _validationService.GetRulesForContext(ValidationContext.AdvisoryOnly);
+
+            // Assert
+            rules.Should().NotBeEmpty();
+            rules.Should().HaveCount(1);
+            rules.Should().Contain(r => r.RuleId == "ADVISORY_CHECKS");
+        }
+
+        #endregion
+
+        #region ValidateRanks
+
+        [Fact]
+        public void ValidateRanks_ValidRanks_ReturnsNoErrors()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy
+                {
+                    Id = "1",
+                    Name = "Officer",
+                    RequiredPoints = 0,
+                    Salary = 1000
+                }
+            };
+            ranks[0].Stations.Add(new StationAssignment { StationName = "Mission Row" });
+
+            // Act
+            var result = _validationService.ValidateRanks(ranks, ValidationContext.Full);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Errors.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void ValidateRanks_NullRanks_ReturnsEmptyResult()
+        {
+            // Act
+            var result = _validationService.ValidateRanks(null, ValidationContext.Full);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ValidateRanks_InvalidRanks_ReturnsErrors()
+        {
+            // Arrange - rank with no stations (error)
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy
+                {
+                    Id = "1",
+                    Name = "Officer",
+                    RequiredPoints = 0,
+                    Salary = 1000
+                    // No stations - should trigger error
+                }
+            };
+
+            // Act
+            var result = _validationService.ValidateRanks(ranks, ValidationContext.Full);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeTrue();
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("must have at least one station"));
+        }
+
+        [Fact]
+        public void ValidateRanks_DifferentContexts_AppliesDifferentRules()
+        {
+            // Arrange
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy
+                {
+                    Id = "1",
+                    Name = "Officer",
+                    RequiredPoints = 0,
+                    Salary = 1000
+                }
+            };
+            ranks[0].Stations.Add(new StationAssignment { StationName = "Mission Row" });
+
+            // Act
+            var fullResult = _validationService.ValidateRanks(ranks, ValidationContext.Full);
+            var realtimeResult = _validationService.ValidateRanks(ranks, ValidationContext.RealTime);
+
+            // Assert
+            fullResult.Should().NotBeNull();
+            realtimeResult.Should().NotBeNull();
+
+            // Both should have no errors for this valid rank
+            fullResult.HasErrors.Should().BeFalse();
+            realtimeResult.HasErrors.Should().BeFalse();
+        }
+
+        #endregion
+
+        #region ValidateSingleRank
+
+        [Fact]
+        public void ValidateSingleRank_ValidRank_ReturnsNoErrors()
+        {
+            // Arrange
+            var rank = new RankHierarchy
+            {
+                Id = "1",
+                Name = "Officer",
+                RequiredPoints = 0,
+                Salary = 1000
+            };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+
+            var allRanks = new List<RankHierarchy> { rank };
+
+            // Act
+            var result = _validationService.ValidateSingleRank(rank, allRanks, ValidationContext.RealTime);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ValidateSingleRank_NullRank_ReturnsEmptyResult()
+        {
+            // Act
+            var result = _validationService.ValidateSingleRank(null, new List<RankHierarchy>(), ValidationContext.RealTime);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ValidateSingleRank_InvalidRank_ReturnsErrors()
+        {
+            // Arrange - rank with negative salary
+            var rank = new RankHierarchy
+            {
+                Id = "1",
+                Name = "Officer",
+                RequiredPoints = 0,
+                Salary = -1000  // Invalid
+            };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+
+            var allRanks = new List<RankHierarchy> { rank };
+
+            // Act
+            var result = _validationService.ValidateSingleRank(rank, allRanks, ValidationContext.RealTime);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeTrue();
+            result.Errors.Should().Contain(e => e.Message.Contains("Salary cannot be negative"));
+        }
+
+        [Fact]
+        public void ValidateSingleRank_OnlyCallsSingleRankRules()
+        {
+            // Arrange
+            var rank = new RankHierarchy
+            {
+                Id = "1",
+                Name = "Officer",
+                RequiredPoints = 0,
+                Salary = 1000
+            };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+
+            var allRanks = new List<RankHierarchy> { rank };
+
+            // Act
+            var result = _validationService.ValidateSingleRank(rank, allRanks, ValidationContext.RealTime);
+
+            // Assert
+            result.Should().NotBeNull();
+            // Should not throw - means only single rank rules were called
+        }
+
+        #endregion
+
+        #region ValidateProperty
+
+        [Fact]
+        public void ValidateProperty_ValidProperty_ReturnsNoErrors()
+        {
+            // Arrange
+            var rank = new RankHierarchy
+            {
+                Id = "1",
+                Name = "Officer",
+                RequiredPoints = 0,
+                Salary = 1000
+            };
+            var allRanks = new List<RankHierarchy> { rank };
+
+            // Act
+            var result = _validationService.ValidateProperty(rank, "Name", "Officer", allRanks);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ValidateProperty_InvalidProperty_ReturnsErrors()
+        {
+            // Arrange
+            var rank = new RankHierarchy
+            {
+                Id = "1",
+                Name = "Officer",
+                RequiredPoints = 0,
+                Salary = 1000
+            };
+            var allRanks = new List<RankHierarchy> { rank };
+
+            // Act
+            var result = _validationService.ValidateProperty(rank, "Salary", -1000, allRanks);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeTrue();
+            result.Errors.Should().Contain(e => e.Message.Contains("Salary cannot be negative"));
+        }
+
+        [Fact]
+        public void ValidateProperty_NullRank_ReturnsEmptyResult()
+        {
+            // Act
+            var result = _validationService.ValidateProperty(null, "Name", "Test", new List<RankHierarchy>());
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ValidateProperty_EmptyPropertyName_ReturnsEmptyResult()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer" };
+
+            // Act
+            var result = _validationService.ValidateProperty(rank, "", "value", new List<RankHierarchy>());
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ValidateProperty_AlwaysUsesRealTimeContext()
+        {
+            // Arrange
+            var rank = new RankHierarchy
+            {
+                Id = "1",
+                Name = "Officer",
+                RequiredPoints = 0,
+                Salary = 1000
+            };
+            var allRanks = new List<RankHierarchy> { rank };
+
+            // Act
+            var result = _validationService.ValidateProperty(rank, "Name", "Officer", allRanks);
+
+            // Assert
+            result.Should().NotBeNull();
+            // If it used a different context, we might get different validation results
+            // For now, just verify it doesn't throw
+        }
+
+        #endregion
+
+        #region Integration Tests
+
+        [Fact]
+        public void ValidationService_FullWorkflow_ProducesExpectedResults()
+        {
+            // Arrange - create a complex rank hierarchy with various issues
+            var ranks = new List<RankHierarchy>
+            {
+                new RankHierarchy
+                {
+                    Id = "1",
+                    Name = "Officer",
+                    RequiredPoints = 100,  // Should be 0 for first rank
+                    Salary = 1000
+                },
+                new RankHierarchy
+                {
+                    Id = "2",
+                    Name = "Detective",
+                    RequiredPoints = 50,  // Decreasing XP (error)
+                    Salary = 2000
+                }
+            };
+            ranks[0].Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            ranks[1].Stations.Add(new StationAssignment { StationName = "Vespucci" });
+
+            // Act
+            var result = _validationService.ValidateRanks(ranks, ValidationContext.Full);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.HasErrors.Should().BeTrue();
+
+            // Should have error about first rank not being 0 XP
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("First rank") && e.Message.Contains("must start at XP 0"));
+
+            // Should have error about decreasing/invalid XP progression
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("Required Points greater than"));
+        }
+
+        [Fact]
+        public void ValidationService_CustomRule_CanBeRegisteredAndExecuted()
+        {
+            // Arrange
+            var customRuleExecuted = false;
+
+            var mockRule = new Mock<IValidationRule>();
+            mockRule.Setup(r => r.RuleId).Returns("CUSTOM_TEST_RULE");
+            mockRule.Setup(r => r.RuleName).Returns("Custom Test Rule");
+            mockRule.Setup(r => r.ApplicableContexts).Returns(new[] { ValidationContext.Full });
+            mockRule.Setup(r => r.Validate(
+                It.IsAny<List<RankHierarchy>>(),
+                It.IsAny<ValidationResult>(),
+                It.IsAny<ValidationContext>(),
+                It.IsAny<DataLoadingService>()))
+                .Callback(() => customRuleExecuted = true);
+
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            var ranks = new List<RankHierarchy> { rank };
+
+            // Act
+            _validationService.RegisterRule(mockRule.Object);
+            _validationService.ValidateRanks(ranks, ValidationContext.Full);
+
+            // Assert
+            customRuleExecuted.Should().BeTrue();
+        }
+
+        #endregion
+    }
+}

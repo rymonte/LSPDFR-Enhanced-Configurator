@@ -24,9 +24,10 @@ bld/
 *.sln.docstates
 *.userprefs
 
-# Development notes and documentation  
+# Development notes and documentation
 *.md
 !README.md
+!docs/**/*.md
 
 # Local settings and PII
 lspdfrConfiguratorSettings.ini
@@ -73,6 +74,3 @@ mvnw.cmd
 
 # Environment variables
 .env
-
-# Tests (need to be redone)
-LSPDFREnhancedConfigurator.Tests/

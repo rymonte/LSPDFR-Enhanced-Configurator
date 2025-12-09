@@ -1,0 +1,399 @@
+using FluentAssertions;
+using LSPDFREnhancedConfigurator.Models;
+using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
+using LSPDFREnhancedConfigurator.Services.Validation.Rules;
+using Moq;
+
+namespace LSPDFREnhancedConfigurator.Tests.Services.Validation.Rules
+{
+    public class ReferenceValidationRuleTests
+    {
+        private readonly ReferenceValidationRule _rule;
+        private readonly Mock<DataLoadingService> _mockDataService;
+
+        public ReferenceValidationRuleTests()
+        {
+            _rule = new ReferenceValidationRule();
+            var mockFileDiscovery = new Mock<FileDiscoveryService>("C:\\fake");
+            _mockDataService = new Mock<DataLoadingService>(mockFileDiscovery.Object);
+
+            // Setup mock data
+            SetupMockData();
+        }
+
+        private void SetupMockData()
+        {
+            // Setup available vehicles
+            var vehicles = new List<Vehicle>
+            {
+                new Vehicle { Model = "POLICE", DisplayName = "Police Cruiser" },
+                new Vehicle { Model = "POLICE2", DisplayName = "Police Cruiser 2" },
+                new Vehicle { Model = "POLICE3", DisplayName = "Police Cruiser 3" }
+            };
+            _mockDataService.Setup(x => x.AllVehicles).Returns(vehicles);
+
+            // Setup available stations
+            var stations = new List<Station>
+            {
+                new Station { Name = "Mission Row" },
+                new Station { Name = "Vespucci" },
+                new Station { Name = "Rockford Hills" }
+            };
+            _mockDataService.Setup(x => x.Stations).Returns(stations);
+
+            // Setup available outfits with proper parent relationships
+            var policeOutfit = new Outfit { Name = "Police", ScriptName = "police" };
+            var swatOutfit = new Outfit { Name = "SWAT", ScriptName = "swat" };
+
+            var outfitVariations = new List<OutfitVariation>
+            {
+                new OutfitVariation { Name = "Default", ScriptName = "default", ParentOutfit = policeOutfit },
+                new OutfitVariation { Name = "Summer", ScriptName = "summer", ParentOutfit = policeOutfit },
+                new OutfitVariation { Name = "Default", ScriptName = "default", ParentOutfit = swatOutfit }
+            };
+            _mockDataService.Setup(x => x.OutfitVariations).Returns(outfitVariations);
+        }
+
+        #region Station Count Validation
+
+        [Fact]
+        public void Validate_RankWithNoStations_ReturnsError()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e =>
+                e.Message.Contains("Officer") &&
+                e.Message.Contains("must have at least one station"));
+        }
+
+        [Fact]
+        public void Validate_RankWithStation_NoError()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Validate_ParentRankWithPayBands_NoStationCountError()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            var payBand1 = new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 0, Salary = 1000 };
+            payBand1.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            parent.PayBands.Add(payBand1);
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().NotContain(e => e.RankName == "Detective" && e.Message.Contains("must have at least one station"));
+        }
+
+        [Fact]
+        public void Validate_PayBandWithNoStations_ReturnsError()
+        {
+            // Arrange
+            var parent = new RankHierarchy
+            {
+                Id = "parent",
+                Name = "Detective",
+                IsParent = true
+            };
+            // Pay band has no stations assigned
+            var payBand1 = new RankHierarchy { Id = "1", Name = "Detective I", RequiredPoints = 0, Salary = 1000 };
+            parent.PayBands.Add(payBand1);
+
+            var ranks = new List<RankHierarchy> { parent };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e =>
+                e.RankName == "Detective I" &&
+                e.Message.Contains("must have at least one station"));
+        }
+
+        #endregion
+
+        #region Vehicle Reference Validation
+
+        [Fact]
+        public void Validate_InvalidVehicleReference_ReturnsWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            rank.Vehicles.Add(new Vehicle { Model = "INVALID_VEHICLE", DisplayName = "Invalid" });
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().Contain(w =>
+                w.RankName == "Officer" &&
+                w.ItemName == "INVALID_VEHICLE" &&
+                w.Message.Contains("Vehicle 'INVALID_VEHICLE' not found"));
+        }
+
+        [Fact]
+        public void Validate_ValidVehicleReference_NoWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            rank.Vehicles.Add(new Vehicle { Model = "POLICE", DisplayName = "Police Cruiser" });
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().NotContain(w => w.Category == "Vehicle");
+        }
+
+        [Fact]
+        public void Validate_VehicleReferenceCaseInsensitive_NoWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            rank.Vehicles.Add(new Vehicle { Model = "police", DisplayName = "Police Cruiser" }); // lowercase
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().NotContain(w => w.Category == "Vehicle");
+        }
+
+        #endregion
+
+        #region Station Reference Validation
+
+        [Fact]
+        public void Validate_InvalidStationReference_ReturnsWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Invalid Station" });
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().Contain(w =>
+                w.RankName == "Officer" &&
+                w.ItemName == "Invalid Station" &&
+                w.Message.Contains("Station 'Invalid Station' not found"));
+        }
+
+        [Fact]
+        public void Validate_ValidStationReference_NoWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().NotContain(w => w.Category == "Station");
+        }
+
+        [Fact]
+        public void Validate_StationReferenceCaseInsensitive_NoWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "mission row" }); // lowercase
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().NotContain(w => w.Category == "Station");
+        }
+
+        #endregion
+
+        #region Outfit Reference Validation
+
+        [Fact]
+        public void Validate_InvalidOutfitReference_ReturnsWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            rank.Outfits.Add("Invalid.Outfit");
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().Contain(w =>
+                w.RankName == "Officer" &&
+                w.ItemName == "Invalid.Outfit" &&
+                w.Message.Contains("Outfit 'Invalid.Outfit' not found"));
+        }
+
+        [Fact]
+        public void Validate_ValidOutfitReference_NoWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            rank.Outfits.Add("Police.Default");
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().NotContain(w => w.Category == "Outfit");
+        }
+
+        [Fact]
+        public void Validate_OutfitReferenceCaseInsensitive_NoWarning()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            rank.Outfits.Add("police.default"); // lowercase
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().NotContain(w => w.Category == "Outfit");
+        }
+
+        #endregion
+
+        #region ValidateSingleRank Tests
+
+        [Fact]
+        public void ValidateSingleRank_NoStations_ReturnsError()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            var allRanks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(rank, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.Errors.Should().Contain(e => e.Message.Contains("must have at least one station"));
+        }
+
+        [Fact]
+        public void ValidateSingleRank_InvalidReferences_ReturnsWarnings()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Invalid Station" });
+            rank.Vehicles.Add(new Vehicle { Model = "INVALID_CAR", DisplayName = "Invalid" });
+            rank.Outfits.Add("Invalid.Outfit");
+            var allRanks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.ValidateSingleRank(rank, allRanks, result, ValidationContext.RealTime, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().HaveCount(3);
+            result.Warnings.Should().Contain(w => w.Category == "Vehicle" && w.ItemName == "INVALID_CAR");
+            result.Warnings.Should().Contain(w => w.Category == "Station" && w.ItemName == "Invalid Station");
+            result.Warnings.Should().Contain(w => w.Category == "Outfit" && w.ItemName == "Invalid.Outfit");
+        }
+
+        #endregion
+
+        #region Auto-Fix Tests
+
+        [Fact]
+        public void Validate_InvalidReferences_AreAutoFixable()
+        {
+            // Arrange
+            var rank = new RankHierarchy { Id = "1", Name = "Officer", RequiredPoints = 0, Salary = 1000 };
+            rank.Stations.Add(new StationAssignment { StationName = "Mission Row" });
+            rank.Vehicles.Add(new Vehicle { Model = "INVALID_VEHICLE", DisplayName = "Invalid" });
+            var ranks = new List<RankHierarchy> { rank };
+            var result = new ValidationResult();
+
+            // Act
+            _rule.Validate(ranks, result, ValidationContext.Full, _mockDataService.Object);
+
+            // Assert
+            result.Warnings.Should().Contain(w => w.IsAutoFixable && w.Category == "Vehicle");
+        }
+
+        #endregion
+
+        #region Rule Metadata Tests
+
+        [Fact]
+        public void RuleId_ReturnsExpectedValue()
+        {
+            // Act & Assert
+            _rule.RuleId.Should().Be("REFERENCE_VALIDATION");
+        }
+
+        [Fact]
+        public void ApplicableContexts_IncludesExpectedContexts()
+        {
+            // Act & Assert
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.Full);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.Startup);
+            _rule.ApplicableContexts.Should().Contain(ValidationContext.PreGenerate);
+            _rule.ApplicableContexts.Should().NotContain(ValidationContext.RealTime);
+        }
+
+        #endregion
+    }
+}
