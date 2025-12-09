@@ -12,23 +12,25 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
     {
         private readonly DataLoadingService _dataService;
         private readonly Models.Station? _contextStation;
+        private readonly List<Vehicle>? _existingVehicles;
         private List<Vehicle> _allVehicles = new List<Vehicle>();
         private List<AgencyFilterItem> _allAgencyFilters = new List<AgencyFilterItem>();
         private string _searchText = string.Empty;
         private string _agencySearchText = string.Empty;
         private string _statusText = "0 vehicles selected";
 
-        public AddVehiclesDialogViewModel(DataLoadingService dataService, Models.Station? contextStation = null)
+        public AddVehiclesDialogViewModel(DataLoadingService dataService, Models.Station? contextStation = null, List<Vehicle>? existingVehicles = null)
         {
             _dataService = dataService;
             _contextStation = contextStation;
+            _existingVehicles = existingVehicles;
             AgencyFilters = new ObservableCollection<AgencyFilterItem>();
             VehicleItems = new ObservableCollection<VehicleItemViewModel>();
 
             AddSelectedCommand = new RelayCommand(OnAddSelected, CanAddSelected);
             FilterByStationAgencyCommand = new RelayCommand(OnFilterByStationAgency, CanFilterByStationAgency);
 
-            Logger.Debug($"AddVehiclesDialogViewModel constructor - DataService has {dataService.AllVehicles.Count} vehicles");
+            Logger.Debug($"AddVehiclesDialogViewModel constructor - DataService has {dataService.AllVehicles.Count} vehicles, {existingVehicles?.Count ?? 0} existing vehicles to exclude");
             LoadData();
             Logger.Debug($"After LoadData - VehicleItems has {VehicleItems.Count} items, AgencyFilters has {AgencyFilters.Count} filters");
         }
@@ -209,12 +211,28 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void LoadVehicles()
         {
+            // Load all vehicles and filter out existing ones
             _allVehicles = _dataService.AllVehicles.ToList();
+
+            if (_existingVehicles != null && _existingVehicles.Count > 0)
+            {
+                // Create a set of existing vehicle models for fast lookup
+                var existingModels = new HashSet<string>(_existingVehicles.Select(v => v.Model), StringComparer.OrdinalIgnoreCase);
+                _allVehicles = _allVehicles.Where(v => !existingModels.Contains(v.Model)).ToList();
+                Logger.Debug($"Filtered out {_existingVehicles.Count} existing vehicles, {_allVehicles.Count} available");
+            }
+
             FilterVehicles();
         }
 
         public void FilterVehicles()
         {
+            // Preserve selection state before clearing
+            var selectedModels = VehicleItems
+                .Where(v => v.IsSelected)
+                .Select(v => v.Model)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             VehicleItems.Clear();
 
             // Get selected agencies
@@ -256,6 +274,13 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             foreach (var vehicle in filteredVehicles)
             {
                 var item = new VehicleItemViewModel(vehicle);
+
+                // Restore selection state if this vehicle was previously selected
+                if (selectedModels.Contains(vehicle.Model))
+                {
+                    item.IsSelected = true;
+                }
+
                 item.PropertyChanged += (s, e) =>
                 {
                     if (e.PropertyName == nameof(VehicleItemViewModel.IsSelected))

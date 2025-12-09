@@ -254,33 +254,98 @@
                 Height="200"
                 IsVisible="{Binding IsValidationPanelVisible}">
             <Grid RowDefinitions="Auto,*">
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
-                    <Image Source="/Resources/Icons/error-icon.png"
-                          Width="20"
-                          Height="20"
-                          VerticalAlignment="Center"
-                          IsVisible="{Binding HasValidationErrorsOnly}"/>
-                    <Image Source="/Resources/Icons/warning-icon.png"
-                          Width="20"
-                          Height="20"
-                          VerticalAlignment="Center"
-                          IsVisible="{Binding HasWarnings}"/>
-                    <Image Source="/Resources/Icons/info-icon.png"
-                          Width="20"
-                          Height="20"
-                          VerticalAlignment="Center"
-                          IsVisible="{Binding HasAdvisories}"/>
-                    <Image Source="/Resources/Icons/accept-icon.png"
-                          Width="20"
-                          Height="20"
-                          VerticalAlignment="Center"
-                          IsVisible="{Binding !HasAnyValidationIssues}"/>
-                    <TextBlock Text="Validation Errors"
-                              FontSize="16"
-                              FontWeight="Bold"
-                              Foreground="{StaticResource WarningOrangeBrush}"
-                              VerticalAlignment="Center"/>
-                </StackPanel>
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,8">
+                    <!-- Left: Title and icons -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                        <Image Source="/Resources/Icons/error-icon.png"
+                              Width="20"
+                              Height="20"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding HasValidationErrorsOnly}"/>
+                        <Image Source="/Resources/Icons/warning-icon.png"
+                              Width="20"
+                              Height="20"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding HasWarnings}"/>
+                        <Image Source="/Resources/Icons/info-icon.png"
+                              Width="20"
+                              Height="20"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding HasAdvisories}"/>
+                        <Image Source="/Resources/Icons/accept-icon.png"
+                              Width="20"
+                              Height="20"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding !HasAnyValidationIssues}"/>
+                        <TextBlock Text="Validation Errors"
+                                  FontSize="16"
+                                  FontWeight="Bold"
+                                  Foreground="{StaticResource WarningOrangeBrush}"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Right: Dismissal action buttons -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Command="{Binding DismissAllWarningsCommand}"
+                                Padding="10,5"
+                                MinWidth="100">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Image Source="/Resources/Icons/warning-icon.png"
+                                      Width="14"
+                                      Height="14"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Dismiss All Warnings"
+                                          VerticalAlignment="Center"
+                                          FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding DismissAllAdvisoriesCommand}"
+                                Padding="10,5"
+                                MinWidth="100">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Image Source="/Resources/Icons/info-icon.png"
+                                      Width="14"
+                                      Height="14"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Dismiss All Advisories"
+                                          VerticalAlignment="Center"
+                                          FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ToggleShowDismissedCommand}"
+                                Padding="10,5"
+                                MinWidth="100">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Image Source="/Resources/Icons/info-icon.png"
+                                      Width="14"
+                                      Height="14"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ShowDismissedButtonText}"
+                                          VerticalAlignment="Center"
+                                          FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding RefreshValidationCommand}"
+                                Padding="10,5"
+                                MinWidth="100"
+                                Background="{StaticResource AccentCyanBrush}"
+                                BorderBrush="{StaticResource AccentCyanBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Image Source="/Resources/Icons/refresh-icon.png"
+                                      Width="14"
+                                      Height="14"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Reset"
+                                          VerticalAlignment="Center"
+                                          FontSize="12"
+                                          FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
 
                 <DataGrid Grid.Row="1"
                          ItemsSource="{Binding ValidationErrorItems}"
@@ -318,24 +383,75 @@
                                           Width="*"
                                           MinWidth="200"/>
 
-                        <DataGridTemplateColumn Header="Action" Width="100">
+                        <DataGridTemplateColumn Header="Actions" Width="200">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate DataType="models:ValidationErrorItem">
-                                    <Button Command="{Binding RemoveCommand}"
-                                           IsEnabled="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                           HorizontalAlignment="Center"
-                                           Padding="8,4"
-                                           MinWidth="80">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <Image Source="/Resources/Icons/delete-icon.png"
-                                                  Width="12"
-                                                  Height="12"
-                                                  VerticalAlignment="Center"/>
-                                            <TextBlock Text="Remove"
-                                                      VerticalAlignment="Center"
-                                                      FontSize="11"/>
-                                        </StackPanel>
-                                    </Button>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                                        <!-- Show Button -->
+                                        <Button Command="{Binding ShowCommand}"
+                                               IsVisible="{Binding CanShow}"
+                                               Padding="6,3"
+                                               MinWidth="60">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <Image Source="/Resources/Icons/info-icon.png"
+                                                      Width="12"
+                                                      Height="12"
+                                                      VerticalAlignment="Center"/>
+                                                <TextBlock Text="Show"
+                                                          VerticalAlignment="Center"
+                                                          FontSize="11"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Remove Button -->
+                                        <Button Command="{Binding RemoveCommand}"
+                                               IsVisible="{Binding CanRemove}"
+                                               Padding="6,3"
+                                               MinWidth="70">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <Image Source="/Resources/Icons/delete-icon.png"
+                                                      Width="12"
+                                                      Height="12"
+                                                      VerticalAlignment="Center"/>
+                                                <TextBlock Text="Remove"
+                                                          VerticalAlignment="Center"
+                                                          FontSize="11"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Dismiss Button -->
+                                        <Button Command="{Binding DismissCommand}"
+                                               IsVisible="{Binding CanDismiss}"
+                                               Padding="6,3"
+                                               MinWidth="70"
+                                               Background="{StaticResource WarningOrangeBrush}"
+                                               BorderBrush="{StaticResource WarningOrangeBrush}">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <Image Source="/Resources/Icons/warning-icon.png"
+                                                      Width="12"
+                                                      Height="12"
+                                                      VerticalAlignment="Center"/>
+                                                <TextBlock Text="Dismiss"
+                                                          VerticalAlignment="Center"
+                                                          FontSize="11"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Dismissed Indicator -->
+                                        <TextBlock Text="✓ Dismissed"
+                                                  IsVisible="{Binding IsDismissed}"
+                                                  VerticalAlignment="Center"
+                                                  FontSize="11"
+                                                  Foreground="{StaticResource TextGrayBrush}"
+                                                  FontStyle="Italic"/>
+
+                                        <!-- No Actions Text -->
+                                        <TextBlock Text="{Binding ActionsText}"
+                                                  IsVisible="{Binding NoActionsAvailable}"
+                                                  VerticalAlignment="Center"
+                                                  FontSize="11"
+                                                  Foreground="{StaticResource TextGrayBrush}"/>
+                                    </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -425,14 +541,40 @@
                           Foreground="{StaticResource TextWhiteBrush}"
                           VerticalAlignment="Center"/>
 
-                <!-- Loading indicator -->
+                <!-- Debug logging indicator and loading indicator -->
                 <StackPanel Grid.Column="2"
                            Orientation="Horizontal"
-                           Spacing="8"
-                           IsVisible="{Binding IsLoading}">
-                    <TextBlock Text="Loading..."
-                              Foreground="{StaticResource AccentCyanBrush}"
-                              VerticalAlignment="Center"/>
+                           Spacing="16">
+
+                    <!-- Debug logging enabled indicator -->
+                    <Border Background="#28FFB84D"
+                           BorderBrush="{StaticResource WarningOrangeBrush}"
+                           BorderThickness="1"
+                           Padding="8,4"
+                           CornerRadius="3"
+                           IsVisible="{Binding IsDebugLoggingEnabled}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Source="/Resources/Icons/warning-icon.png"
+                                  Width="16"
+                                  Height="16"
+                                  VerticalAlignment="Center"/>
+                            <TextBlock Text="Debug Logging Enabled"
+                                      Foreground="{StaticResource WarningOrangeBrush}"
+                                      FontSize="11"
+                                      FontWeight="SemiBold"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Loading indicator -->
+                    <StackPanel Orientation="Horizontal"
+                               Spacing="8"
+                               IsVisible="{Binding IsLoading}">
+                        <TextBlock Text="Loading..."
+                                  Foreground="{StaticResource AccentCyanBrush}"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+
                 </StackPanel>
             </Grid>
         </Border>

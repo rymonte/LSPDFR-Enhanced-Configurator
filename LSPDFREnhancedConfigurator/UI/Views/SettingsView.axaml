@@ -136,6 +136,12 @@
                 </ComboBox>
             </StackPanel>
 
+            <!-- Debug Logging -->
+            <CheckBox Content="Enable debug logging"
+                     IsChecked="{Binding EnableDebugLogging}"
+                     Margin="20,12,0,0"
+                     ToolTip.Tip="Enables detailed debug logging for troubleshooting. A persistent indicator will appear in the status bar when enabled."/>
+
             <!-- Backup Directory -->
             <StackPanel Orientation="Vertical" Spacing="6" Margin="20,16,0,0">
                 <TextBlock Text="Backup Directory"

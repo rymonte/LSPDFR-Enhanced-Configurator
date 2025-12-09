@@ -13,11 +13,11 @@ namespace LSPDFREnhancedConfigurator.Services
     {
         private readonly FileDiscoveryService _fileDiscovery;
 
-        public List<Agency> Agencies { get; private set; } = new List<Agency>();
-        public List<Vehicle> AllVehicles { get; private set; } = new List<Vehicle>();
-        public List<Station> Stations { get; private set; } = new List<Station>();
-        public List<OutfitVariation> OutfitVariations { get; private set; } = new List<OutfitVariation>();
-        public List<Rank> Ranks { get; private set; } = new List<Rank>();
+        public virtual List<Agency> Agencies { get; protected set; } = new List<Agency>();
+        public virtual List<Vehicle> AllVehicles { get; protected set; } = new List<Vehicle>();
+        public virtual List<Station> Stations { get; protected set; } = new List<Station>();
+        public virtual List<OutfitVariation> OutfitVariations { get; protected set; } = new List<OutfitVariation>();
+        public virtual List<RankHierarchy> Ranks { get; protected set; } = new List<RankHierarchy>();
 
         public DataLoadingService(FileDiscoveryService fileDiscovery)
         {
@@ -251,13 +251,13 @@ namespace LSPDFREnhancedConfigurator.Services
                 catch (Exception ex)
                 {
                     Logger.Error($"Error parsing ranks file {ranksFile}", ex);
-                    Ranks = new List<Rank>();
+                    Ranks = new List<RankHierarchy>();
                 }
             }
             else
             {
                 Logger.Warn("No Ranks.xml file found. Starting with empty ranks list.");
-                Ranks = new List<Rank>();
+                Ranks = new List<RankHierarchy>();
             }
         }
 

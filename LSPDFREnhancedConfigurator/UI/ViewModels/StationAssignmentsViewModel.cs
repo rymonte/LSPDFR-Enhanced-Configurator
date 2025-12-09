@@ -13,6 +13,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
     public class StationAssignmentsViewModel : ViewModelBase
     {
         private DataLoadingService? _dataService;
+        private SelectionStateService? _selectionStateService;
         private List<RankHierarchy> _ranks = new List<RankHierarchy>();
         private RankHierarchy? _selectedRank;
         private RankHierarchy? _selectedCopyFromRank;
@@ -20,6 +21,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private string _searchText = string.Empty;
         private string _removeButtonText = "Remove";
         private bool _removeButtonEnabled = false;
+        private bool _isUpdatingFromService = false;
 
         // Command Pattern Undo/Redo Manager
         private readonly UndoRedoManager _undoRedoManager = new UndoRedoManager(maxStackSize: 50);
@@ -81,6 +83,12 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     OnRankChanged();
                     UpdateCopyFromRankList();
                     UpdateCommandStates();
+
+                    // Notify selection service (unless we're updating from the service)
+                    if (!_isUpdatingFromService && _selectionStateService != null)
+                    {
+                        _selectionStateService.SelectedRank = value;
+                    }
                 }
             }
         }
@@ -637,6 +645,31 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         {
             _dataService = dataService;
             LoadAgencies();
+        }
+
+        public void SetSelectionStateService(SelectionStateService selectionStateService)
+        {
+            _selectionStateService = selectionStateService;
+
+            // Subscribe to rank selection changes from the service
+            _selectionStateService.RankSelectionChanged += OnSelectionStateServiceRankChanged;
+        }
+
+        private void OnSelectionStateServiceRankChanged(object? sender, RankSelectionChangedEventArgs e)
+        {
+            // Update local selection to match the service (prevent feedback loop)
+            if (_selectedRank != e.SelectedRank)
+            {
+                _isUpdatingFromService = true;
+                try
+                {
+                    SelectedRank = e.SelectedRank;
+                }
+                finally
+                {
+                    _isUpdatingFromService = false;
+                }
+            }
         }
 
         public void LoadRanks(List<RankHierarchy> ranks)

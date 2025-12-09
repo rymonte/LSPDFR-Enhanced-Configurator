@@ -1,19 +1,13 @@
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using LSPDFREnhancedConfigurator.Models;
+using LSPDFREnhancedConfigurator.Services.Validation;
+
+// Use the unified ValidationSeverity from the validation service
+using RankValidationSeverity = LSPDFREnhancedConfigurator.Services.Validation.ValidationSeverity;
 
 namespace LSPDFREnhancedConfigurator.UI.ViewModels
 {
-    /// <summary>
-    /// Validation severity levels for tree item display
-    /// </summary>
-    public enum RankValidationSeverity
-    {
-        None,
-        Advisory,
-        Warning,
-        Error
-    }
 
     /// <summary>
     /// ViewModel for TreeView items representing ranks and pay bands

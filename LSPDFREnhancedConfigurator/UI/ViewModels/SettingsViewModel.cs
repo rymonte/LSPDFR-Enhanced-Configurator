@@ -37,6 +37,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private string _backupDirectory = string.Empty;
         private string _gtaDirectoryStatus = string.Empty;
         private string _gtaDirectoryStatusColor = "#FF6B6B";
+        private bool _enableDebugLogging = false;
 
         public event EventHandler? ShowAdvancedSettingsChanged;
         public event EventHandler? GtaDirectoryChanged;
@@ -163,6 +164,25 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             }
         }
 
+        public bool EnableDebugLogging
+        {
+            get => _enableDebugLogging;
+            set
+            {
+                if (SetProperty(ref _enableDebugLogging, value))
+                {
+                    // Set log verbosity: Debug when enabled, Info when disabled
+                    var logLevel = value ? LogLevel.Debug : LogLevel.Info;
+                    _settingsManager.SetLogVerbosity(logLevel);
+
+                    // Update Logger's current log level immediately
+                    Logger.CurrentLogLevel = logLevel;
+
+                    Logger.Info($"Debug logging {(value ? "enabled" : "disabled")}");
+                }
+            }
+        }
+
         public ObservableCollection<ValidationSeverityOption> ValidationSeverityLevels { get; }
 
         private ValidationSeverityOption _selectedValidationSeverity;
@@ -221,6 +241,11 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             var currentSeverity = (ValidationFilterLevel)currentSeverityInt;
             _selectedValidationSeverity = ValidationSeverityLevels.FirstOrDefault(l => l.Level == currentSeverity) ?? ValidationSeverityLevels[0]; // Default to Show All
             OnPropertyChanged(nameof(SelectedValidationSeverity));
+
+            // Load debug logging setting
+            var logVerbosity = _settingsManager.GetLogVerbosity();
+            _enableDebugLogging = logVerbosity == LogLevel.Debug || logVerbosity == LogLevel.Trace;
+            OnPropertyChanged(nameof(EnableDebugLogging));
 
             // Advanced settings are hidden by default
             _showAdvancedSettings = false;

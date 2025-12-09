@@ -11,11 +11,18 @@ using LSPDFREnhancedConfigurator.Commands;
 using LSPDFREnhancedConfigurator.Commands.Ranks;
 using LSPDFREnhancedConfigurator.Models;
 using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
+
+// Use the unified ValidationSeverity from the validation service
+using RankValidationSeverity = LSPDFREnhancedConfigurator.Services.Validation.ValidationSeverity;
 
 namespace LSPDFREnhancedConfigurator.UI.ViewModels
 {
     public class RanksViewModel : ViewModelBase
     {
+        private readonly DataLoadingService _dataService;
+        private readonly ValidationService _validationService;
         private List<RankHierarchy> _ranks = new List<RankHierarchy>();
         private RankTreeItemViewModel? _selectedTreeItem;
         private bool _isUpdatingUI;
@@ -52,6 +59,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         public RanksViewModel(List<RankHierarchy>? loadedRanks, DataLoadingService dataService)
         {
+            _dataService = dataService;
+            _validationService = new ValidationService(dataService);
+
             RankTreeItems = new ObservableCollection<RankTreeItemViewModel>();
 
             // Initialize visibility - no rank selected by default
@@ -100,7 +110,6 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             {
                 if (SetProperty(ref _selectedTreeItem, value))
                 {
-                    Logger.Info($"[SelectedTreeItem] Changed to: {(value != null ? $"'{value.Rank.Name}'" : "null")}");
                     OnRankSelected();
                     UpdateCommandStates();
                 }
@@ -121,7 +130,6 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     if (!_hasUncommittedChanges)
                     {
                         _oldRankName = SelectedTreeItem.Rank.Name;
-                        Logger.Info($"[Property Change] Captured old RankName: '{_oldRankName}'");
                     }
 
                     SelectedTreeItem.Rank.Name = value;
@@ -141,7 +149,6 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                     _hasUncommittedChanges = true;
                     ValidateName();
-                    Logger.Info($"[Property Change] RankName changed from '{_oldRankName}' to '{value}'");
                 }
             }
         }
@@ -157,15 +164,11 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     if (!_hasUncommittedChanges)
                     {
                         _oldRequiredPoints = SelectedTreeItem.Rank.RequiredPoints;
-                        Logger.Info($"[Property Change] Captured old RequiredPoints: {_oldRequiredPoints}");
                     }
 
                     // Treat null as 0
                     SelectedTreeItem.Rank.RequiredPoints = value ?? 0;
-                    ValidateRequiredPoints();
                     SelectedTreeItem.UpdateDisplayName();
-
-                    // Don't update validation icon yet - wait for LostFocus
 
                     // If this is a pay band, update parent's display too
                     if (SelectedTreeItem.Rank.Parent != null)
@@ -174,7 +177,6 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     }
 
                     _hasUncommittedChanges = true;
-                    Logger.Info($"[Property Change] RequiredPoints changed from {_oldRequiredPoints} to {value ?? 0}");
                 }
             }
         }
@@ -190,15 +192,11 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     if (!_hasUncommittedChanges)
                     {
                         _oldSalary = SelectedTreeItem.Rank.Salary;
-                        Logger.Info($"[Property Change] Captured old Salary: {_oldSalary}");
                     }
 
                     // Treat null as 0
                     SelectedTreeItem.Rank.Salary = value ?? 0;
-                    ValidateSalary();
                     SelectedTreeItem.UpdateDisplayName();
-
-                    // Don't update validation icon yet - wait for LostFocus
 
                     // If this is a pay band, update parent's display too
                     if (SelectedTreeItem.Rank.Parent != null)
@@ -207,7 +205,6 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     }
 
                     _hasUncommittedChanges = true;
-                    Logger.Info($"[Property Change] Salary changed from {_oldSalary} to {value ?? 0}");
                 }
             }
         }
@@ -580,9 +577,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             // Try new command-based undo first
             if (_undoRedoManager.CanUndo)
             {
-                Logger.Info($"[Undo] Using command-based undo. Description: {_undoRedoManager.GetUndoDescription()}");
+                Logger.Debug($"[Undo] Using command-based undo. Description: {_undoRedoManager.GetUndoDescription()}");
                 _undoRedoManager.Undo();
-                Logger.Info($"Undo performed. Undo stack: {_undoRedoManager.UndoStackSize}, Redo stack: {_undoRedoManager.RedoStackSize}");
+                Logger.Debug($"Undo performed. Undo stack: {_undoRedoManager.UndoStackSize}, Redo stack: {_undoRedoManager.RedoStackSize}");
                 return;
             }
 
@@ -591,7 +588,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             // LastAffectedRankId is already set by the operation that was performed (e.g., OnRemove)
             // This will be used by RestoreExpansionStates to expand the affected rank
-            Logger.Info($"[Undo] Using JSON-based undo. LastAffectedRankId: {_lastAffectedRankId?.Substring(0, Math.Min(8, _lastAffectedRankId?.Length ?? 0)) ?? "null"}");
+            Logger.Debug($"[Undo] Using JSON-based undo. LastAffectedRankId: {_lastAffectedRankId?.Substring(0, Math.Min(8, _lastAffectedRankId?.Length ?? 0)) ?? "null"}");
 
             // Save current state to redo stack
             _redoStack.Push(SerializeRanks());
@@ -601,7 +598,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             RestoreRanks(previousState);
 
             UpdateCommandStates();
-            Logger.Info($"Undo performed. Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+            Logger.Debug($"Undo performed. Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
         }
 
         private bool CanRedo()
@@ -619,9 +616,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             // Try new command-based redo first
             if (_undoRedoManager.CanRedo)
             {
-                Logger.Info($"[Redo] Using command-based redo. Description: {_undoRedoManager.GetRedoDescription()}");
+                Logger.Debug($"[Redo] Using command-based redo. Description: {_undoRedoManager.GetRedoDescription()}");
                 _undoRedoManager.Redo();
-                Logger.Info($"Redo performed. Undo stack: {_undoRedoManager.UndoStackSize}, Redo stack: {_undoRedoManager.RedoStackSize}");
+                Logger.Debug($"Redo performed. Undo stack: {_undoRedoManager.UndoStackSize}, Redo stack: {_undoRedoManager.RedoStackSize}");
                 return;
             }
 
@@ -630,7 +627,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             // LastAffectedRankId should still be set from the previous operation
             // This will be used by RestoreExpansionStates to expand the affected rank
-            Logger.Info($"[Redo] Using JSON-based redo. LastAffectedRankId: {_lastAffectedRankId?.Substring(0, Math.Min(8, _lastAffectedRankId?.Length ?? 0)) ?? "null"}");
+            Logger.Debug($"[Redo] Using JSON-based redo. LastAffectedRankId: {_lastAffectedRankId?.Substring(0, Math.Min(8, _lastAffectedRankId?.Length ?? 0)) ?? "null"}");
 
             // Save current state to undo stack (without clearing redo)
             var currentState = SerializeRanks();
@@ -641,7 +638,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             RestoreRanks(nextState);
 
             UpdateCommandStates();
-            Logger.Info($"Redo performed. Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+            Logger.Debug($"Redo performed. Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
         }
 
         private bool CanPromote()
@@ -993,24 +990,16 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private bool CanMoveUp()
         {
             if (SelectedTreeItem?.Rank == null)
-            {
-                Logger.Info("[CanMoveUp] No item selected - returning false");
                 return false;
-            }
 
             var rank = SelectedTreeItem.Rank;
 
             // Pay bands cannot be moved up/down
             if (rank.Parent != null)
-            {
-                Logger.Info($"[CanMoveUp] '{rank.Name}' is a pay band (Parent: {rank.Parent.Name}) - returning false");
                 return false;
-            }
 
             var index = _ranks.IndexOf(rank);
-            bool canMove = index > 0;
-            Logger.Info($"[CanMoveUp] '{rank.Name}' is a parent rank at index {index} - returning {canMove}");
-            return canMove;
+            return index > 0;
         }
 
         private void OnMoveUp()
@@ -1046,24 +1035,16 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         private bool CanMoveDown()
         {
             if (SelectedTreeItem?.Rank == null)
-            {
-                Logger.Info("[CanMoveDown] No item selected - returning false");
                 return false;
-            }
 
             var rank = SelectedTreeItem.Rank;
 
             // Pay bands cannot be moved up/down
             if (rank.Parent != null)
-            {
-                Logger.Info($"[CanMoveDown] '{rank.Name}' is a pay band (Parent: {rank.Parent.Name}) - returning false");
                 return false;
-            }
 
             var index = _ranks.IndexOf(rank);
-            bool canMove = index < _ranks.Count - 1;
-            Logger.Info($"[CanMoveDown] '{rank.Name}' is a parent rank at index {index} - returning {canMove}");
-            return canMove;
+            return index < _ranks.Count - 1;
         }
 
         private void OnMoveDown()
@@ -1187,7 +1168,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void RefreshTreeView()
         {
-            Logger.Info($"[RefreshTreeView] Refreshing tree view with {_ranks.Count} rank(s)");
+            Logger.Debug($"[RefreshTreeView] Refreshing tree view with {_ranks.Count} rank(s)");
 
             var currentSelection = SelectedTreeItem;
 
@@ -1200,9 +1181,8 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 {
                     if (e.PropertyName == nameof(RankTreeItemViewModel.IsExpanded) && s is RankTreeItemViewModel item)
                     {
-                        Logger.Info($"[RefreshTreeView] IsExpanded changed for '{item.Rank.Name}' to {item.IsExpanded}");
                         UpdateTreeItemValidation(item);
-                        Logger.Info($"[RefreshTreeView] After UpdateTreeItemValidation: Severity={item.ValidationSeverity}, Tooltip='{item.ValidationTooltip}'");
+                        Logger.Trace($"[RefreshTreeView] After UpdateTreeItemValidation: Severity={item.ValidationSeverity}, Tooltip='{item.ValidationTooltip}'");
                     }
                 };
                 RankTreeItems.Add(treeItem);
@@ -1221,7 +1201,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             // Update validation states for all tree items
             UpdateAllValidationStates();
 
-            Logger.Info($"[RefreshTreeView] Refresh complete - {RankTreeItems.Count} item(s) in tree");
+            Logger.Debug($"[RefreshTreeView] Refresh complete - {RankTreeItems.Count} item(s) in tree");
         }
 
         /// <summary>
@@ -1250,6 +1230,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             var severity = RankValidationSeverity.None;
             var tooltip = string.Empty;
 
+            // Use ValidationService to get validation issues for this rank
+            var validationResult = _validationService.ValidateSingleRank(rank, _ranks, ValidationContext.Full);
+
             // Parent ranks with pay bands don't have their own XP/Salary - they derive from children
             bool isParentWithPayBands = rank.Parent == null && rank.PayBands.Count > 0;
 
@@ -1257,34 +1240,42 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             {
                 // Only validate XP/Salary for ranks without pay bands (or pay bands themselves)
 
-                // Check XP validation (highest priority - ERROR)
-                var xpError = GetXpValidationError(rank);
-                Logger.Trace($"[UpdateTreeItemValidation] Rank: {rank.Name}, XP: {rank.RequiredPoints}, XpError: '{xpError}'");
-                if (!string.IsNullOrEmpty(xpError))
+                // Check for errors (highest priority)
+                var errors = validationResult.Issues
+                    .Where(i => i.Severity == ValidationSeverity.Error && i.RankId == rank.Id)
+                    .ToList();
+
+                if (errors.Any())
                 {
                     severity = RankValidationSeverity.Error;
-                    tooltip = xpError;
-                    Logger.Info($"[UpdateTreeItemValidation] Setting ERROR severity for {rank.Name}");
+                    tooltip = string.Join("\n", errors.Select(e => e.Message));
+                    Logger.Debug($"[UpdateTreeItemValidation] Setting ERROR severity for {rank.Name}");
                     treeItem.UpdateValidationState(severity, tooltip);
                     return;
                 }
 
-                // Check salary validation (WARNING)
-                var salaryError = GetSalaryValidationError(rank);
-                if (!string.IsNullOrEmpty(salaryError))
+                // Check for warnings
+                var warnings = validationResult.Issues
+                    .Where(i => i.Severity == ValidationSeverity.Warning && i.RankId == rank.Id)
+                    .ToList();
+
+                if (warnings.Any())
                 {
                     severity = RankValidationSeverity.Warning;
-                    tooltip = salaryError;
+                    tooltip = string.Join("\n", warnings.Select(w => w.Message));
                     treeItem.UpdateValidationState(severity, tooltip);
                     return;
                 }
 
-                // Check salary warnings (WARNING)
-                var warnings = GetWarnings(rank);
-                if (warnings.Count > 0)
+                // Check for advisories
+                var advisories = validationResult.Issues
+                    .Where(i => i.Severity == ValidationSeverity.Advisory && i.RankId == rank.Id)
+                    .ToList();
+
+                if (advisories.Any())
                 {
-                    severity = RankValidationSeverity.Warning;
-                    tooltip = string.Join("\n", warnings);
+                    severity = RankValidationSeverity.Advisory;
+                    tooltip = string.Join("\n", advisories.Select(a => a.Message));
                     treeItem.UpdateValidationState(severity, tooltip);
                     return;
                 }
@@ -1297,59 +1288,66 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 {
                     severity = RankValidationSeverity.Error;
                     tooltip = "Rank must have more than one pay band";
-                    Logger.Info($"[UpdateTreeItemValidation] Setting ERROR severity for {rank.Name} - only 1 pay band");
+                    Logger.Debug($"[UpdateTreeItemValidation] Setting ERROR severity for {rank.Name} - only 1 pay band");
                     treeItem.UpdateValidationState(severity, tooltip);
                     return;
                 }
 
                 // For parent ranks with pay bands: bubble up child errors when collapsed
-                Logger.Info($"[UpdateTreeItemValidation] Parent rank '{rank.Name}' - IsExpanded={treeItem.IsExpanded}, Children count={treeItem.Children.Count}");
                 if (!treeItem.IsExpanded)
                 {
-                    Logger.Info($"[UpdateTreeItemValidation] Parent rank '{rank.Name}' is COLLAPSED - checking children for errors to bubble up");
-                    // Check all children for validation issues
+
+                    // Collect validation issues from all child pay bands
                     var childSeverity = RankValidationSeverity.None;
                     var errorMessages = new List<string>();
 
                     foreach (var child in treeItem.Children)
                     {
                         var childRank = child.Rank;
+                        var childValidation = _validationService.ValidateSingleRank(childRank, _ranks, ValidationContext.Full);
 
-                        // Check child XP errors
-                        var childXpError = GetXpValidationError(childRank);
-                        if (!string.IsNullOrEmpty(childXpError))
+                        // Check for errors (highest priority)
+                        var childErrors = childValidation.Issues
+                            .Where(i => i.Severity == ValidationSeverity.Error && i.RankId == childRank.Id)
+                            .ToList();
+
+                        if (childErrors.Any())
                         {
                             childSeverity = RankValidationSeverity.Error;
-                            errorMessages.Add($"{childRank.Name}: {childXpError}");
+                            foreach (var error in childErrors)
+                            {
+                                errorMessages.Add($"{childRank.Name}: {error.Message}");
+                            }
                         }
 
-                        // Check child salary errors/warnings
-                        var childSalaryError = GetSalaryValidationError(childRank);
-                        if (!string.IsNullOrEmpty(childSalaryError))
-                        {
-                            if (childSeverity == RankValidationSeverity.None)
-                                childSeverity = RankValidationSeverity.Warning;
-                            errorMessages.Add($"{childRank.Name}: {childSalaryError}");
-                        }
+                        // Check for warnings
+                        var childWarnings = childValidation.Issues
+                            .Where(i => i.Severity == ValidationSeverity.Warning && i.RankId == childRank.Id)
+                            .ToList();
 
-                        var childWarnings = GetWarnings(childRank);
-                        if (childWarnings.Count > 0)
+                        if (childWarnings.Any())
                         {
                             if (childSeverity == RankValidationSeverity.None)
                                 childSeverity = RankValidationSeverity.Warning;
                             foreach (var warning in childWarnings)
                             {
-                                errorMessages.Add($"{childRank.Name}: {warning}");
+                                errorMessages.Add($"{childRank.Name}: {warning.Message}");
                             }
                         }
 
-                        // Check child name warnings
-                        var childNameWarning = GetNameValidationWarning(childRank);
-                        if (!string.IsNullOrEmpty(childNameWarning))
+                        // Check for advisories
+                        var childAdvisories = childValidation.Issues
+                            .Where(i => i.Severity == ValidationSeverity.Advisory && i.RankId == childRank.Id)
+                            .ToList();
+
+                        if (childAdvisories.Any())
                         {
                             if (childSeverity == RankValidationSeverity.None)
                                 childSeverity = RankValidationSeverity.Advisory;
-                            errorMessages.Add($"{childRank.Name}: {childNameWarning}");
+                            foreach (var advisory in childAdvisories)
+                            {
+                                errorMessages.Add($"{childRank.Name}: {advisory.Message}");
+                            }
                         }
                     }
 
@@ -1359,189 +1357,10 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 // When expanded, parent shows no errors (children show their own)
             }
 
-            // Check name validation (ADVISORY) - applies to all ranks
-            var nameWarning = GetNameValidationWarning(rank);
-            if (!string.IsNullOrEmpty(nameWarning))
-            {
-                // Only override if we don't already have a higher severity
-                if (severity == RankValidationSeverity.None)
-                {
-                    severity = RankValidationSeverity.Advisory;
-                    tooltip = nameWarning;
-                }
-            }
-
             Logger.Trace($"[UpdateTreeItemValidation] Final severity for {rank.Name}: {severity}");
             treeItem.UpdateValidationState(severity, tooltip);
         }
 
-        /// <summary>
-        /// Gets XP validation error for a rank (returns error message or empty string)
-        /// </summary>
-        private string GetXpValidationError(RankHierarchy rank)
-        {
-            if (rank.RequiredPoints < 0)
-            {
-                return "Required Points must be greater than or equal to 0";
-            }
-
-            // Determine the minimum XP this rank must exceed
-            int? minimumRequiredXp = null;
-
-            if (rank.Parent != null)
-            {
-                // For pay bands
-                var payBandIndex = rank.Parent.PayBands.IndexOf(rank);
-                if (payBandIndex > 0)
-                {
-                    // Not first pay band - compare against previous pay band
-                    minimumRequiredXp = rank.Parent.PayBands[payBandIndex - 1].RequiredPoints;
-                }
-                else if (payBandIndex == 0)
-                {
-                    // First pay band - must compare against previous RANK in _ranks list, not parent
-                    // Parent derives XP from children, so we can't use parent.RequiredPoints
-                    var parentIndex = _ranks.IndexOf(rank.Parent);
-                    if (parentIndex > 0)
-                    {
-                        var previousRank = _ranks[parentIndex - 1];
-                        minimumRequiredXp = previousRank.IsParent && previousRank.PayBands.Count > 0
-                            ? previousRank.PayBands.Max(pb => pb.RequiredPoints)
-                            : previousRank.RequiredPoints;
-                    }
-                    else
-                    {
-                        // First rank's first pay band - should be >= 0
-                        minimumRequiredXp = 0;
-                    }
-                }
-            }
-            else
-            {
-                // For parent ranks
-                var rankIndex = _ranks.IndexOf(rank);
-                if (rankIndex > 0)
-                {
-                    var previousRank = _ranks[rankIndex - 1];
-                    minimumRequiredXp = previousRank.IsParent && previousRank.PayBands.Count > 0
-                        ? previousRank.PayBands.Max(pb => pb.RequiredPoints)
-                        : previousRank.RequiredPoints;
-                }
-            }
-
-            if (minimumRequiredXp.HasValue)
-            {
-                bool isFirstPayBand = rank.Parent != null && rank.Parent.PayBands.IndexOf(rank) == 0;
-
-                if (isFirstPayBand && rank.RequiredPoints < minimumRequiredXp.Value)
-                {
-                    return $"Required Points must be greater than or equal to {minimumRequiredXp.Value} (previous rank)";
-                }
-                else if (!isFirstPayBand && rank.RequiredPoints <= minimumRequiredXp.Value)
-                {
-                    var context = rank.Parent != null ? "previous pay band" : "previous rank";
-                    return $"Required Points must be greater than {minimumRequiredXp.Value} ({context})";
-                }
-            }
-
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// Gets salary validation error for a rank (returns error message or empty string)
-        /// </summary>
-        private string GetSalaryValidationError(RankHierarchy rank)
-        {
-            if (rank.Salary < 0)
-            {
-                return "Salary must be greater than or equal to 0";
-            }
-
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// Gets name validation warning for a rank (returns warning message or empty string)
-        /// </summary>
-        private string GetNameValidationWarning(RankHierarchy rank)
-        {
-            var allRanks = new List<RankHierarchy>();
-            foreach (var r in _ranks)
-            {
-                allRanks.Add(r);
-                allRanks.AddRange(r.PayBands);
-            }
-
-            var duplicates = allRanks.Where(r => r.Id != rank.Id &&
-                                                  string.Equals(r.Name, rank.Name, StringComparison.OrdinalIgnoreCase))
-                                     .ToList();
-
-            if (duplicates.Count > 0)
-            {
-                return "Name: Another rank already uses this name";
-            }
-
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// Gets warnings for a rank (salary lower than previous)
-        /// </summary>
-        private List<string> GetWarnings(RankHierarchy rank)
-        {
-            var warnings = new List<string>();
-
-            // Find previous rank for comparison
-            RankHierarchy? previousRank = null;
-            int? previousSalary = null;
-
-            if (rank.Parent != null)
-            {
-                var payBandIndex = rank.Parent.PayBands.IndexOf(rank);
-                if (payBandIndex > 0)
-                {
-                    // Not first pay band - compare against previous pay band
-                    previousRank = rank.Parent.PayBands[payBandIndex - 1];
-                    previousSalary = previousRank.Salary;
-                }
-                else if (payBandIndex == 0)
-                {
-                    // First pay band - must compare against previous RANK in _ranks list, not parent
-                    // Parent derives Salary from children, so we can't use parent.Salary
-                    var parentIndex = _ranks.IndexOf(rank.Parent);
-                    if (parentIndex > 0)
-                    {
-                        previousRank = _ranks[parentIndex - 1];
-                        previousSalary = previousRank.IsParent && previousRank.PayBands.Count > 0
-                            ? previousRank.PayBands.Max(pb => pb.Salary)
-                            : previousRank.Salary;
-                    }
-                    // If parentIndex == 0, there's no previous rank, so no warning applies
-                }
-            }
-            else
-            {
-                var rankIndex = _ranks.IndexOf(rank);
-                if (rankIndex > 0)
-                {
-                    previousRank = _ranks[rankIndex - 1];
-                    previousSalary = previousRank.IsParent && previousRank.PayBands.Count > 0
-                        ? previousRank.PayBands.Max(pb => pb.Salary)
-                        : previousRank.Salary;
-                }
-            }
-
-            if (previousRank != null)
-            {
-                // Warning: Check for lower salary
-                if (previousSalary.HasValue && rank.Salary < previousSalary.Value)
-                {
-                    warnings.Add($"Salary is lower than previous ({previousSalary.Value})");
-                }
-            }
-
-            return warnings;
-        }
 
         /// <summary>
         /// Called when XP or Salary field loses focus - triggers validation update
@@ -1559,7 +1378,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     var parentTreeItem = FindTreeItem(SelectedTreeItem.Rank.Parent.Id);
                     if (parentTreeItem != null)
                     {
-                        Logger.Info($"[OnFieldLostFocus] Updating parent '{parentTreeItem.Rank.Name}' validation after child change");
+                        Logger.Debug($"[OnFieldLostFocus] Updating parent '{parentTreeItem.Rank.Name}' validation after child change");
                         UpdateTreeItemValidation(parentTreeItem);
                     }
                 }
@@ -1590,86 +1409,19 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             if (SelectedTreeItem?.Rank == null) return;
 
-            // Check if value is null/empty
-            if (_requiredPoints == null)
-            {
-                RequiredPointsValidation = "Required Points cannot be empty";
-                return;
-            }
+            // Use ValidationService to validate the single rank
+            var validationResult = _validationService.ValidateSingleRank(SelectedTreeItem.Rank, _ranks, ValidationContext.RealTime);
 
-            var rank = SelectedTreeItem.Rank;
-            if (rank.RequiredPoints < 0)
-            {
-                RequiredPointsValidation = "Required Points must be greater than or equal to 0";
-                return;
-            }
+            // Find errors related to RequiredPoints/XP progression
+            var xpErrors = validationResult.Issues
+                .Where(i => i.Severity == ValidationSeverity.Error &&
+                           i.RankId == SelectedTreeItem.Rank.Id &&
+                           (i.PropertyName == "RequiredPoints" || i.Message.Contains("XP") || i.Message.Contains("Required Points")))
+                .ToList();
 
-            // Determine the minimum XP this rank must exceed
-            int? minimumRequiredXp = null;
-
-            if (rank.Parent != null)
+            if (xpErrors.Any())
             {
-                // For pay bands, compare against the previous pay band within the same parent
-                var payBandIndex = rank.Parent.PayBands.IndexOf(rank);
-                if (payBandIndex > 0)
-                {
-                    // Not first pay band - compare against previous pay band
-                    var previousPayBand = rank.Parent.PayBands[payBandIndex - 1];
-                    minimumRequiredXp = previousPayBand.RequiredPoints;
-                }
-                else if (payBandIndex == 0)
-                {
-                    // First pay band - must compare against previous RANK in _ranks list, not parent
-                    // Parent derives XP from children, so we can't use parent.RequiredPoints
-                    var parentIndex = _ranks.IndexOf(rank.Parent);
-                    if (parentIndex > 0)
-                    {
-                        var previousRank = _ranks[parentIndex - 1];
-                        minimumRequiredXp = previousRank.IsParent && previousRank.PayBands.Count > 0
-                            ? previousRank.PayBands.Max(pb => pb.RequiredPoints)
-                            : previousRank.RequiredPoints;
-                    }
-                    else
-                    {
-                        // First rank's first pay band - should be >= 0
-                        minimumRequiredXp = 0;
-                    }
-                }
-            }
-            else
-            {
-                // For parent ranks, compare against the previous parent rank
-                var rankIndex = _ranks.IndexOf(rank);
-                if (rankIndex > 0)
-                {
-                    var previousRank = _ranks[rankIndex - 1];
-                    // For ranks with pay bands, use the highest pay band value
-                    minimumRequiredXp = previousRank.IsParent && previousRank.PayBands.Count > 0
-                        ? previousRank.PayBands.Max(pb => pb.RequiredPoints)
-                        : previousRank.RequiredPoints;
-                }
-            }
-
-            // Check if this rank's required points overlaps with minimum
-            if (minimumRequiredXp.HasValue)
-            {
-                // Check if this is the first pay band
-                bool isFirstPayBand = rank.Parent != null && rank.Parent.PayBands.IndexOf(rank) == 0;
-
-                if (isFirstPayBand)
-                {
-                    // First pay band can equal previous rank's XP, but not be less
-                    if (rank.RequiredPoints < minimumRequiredXp.Value)
-                    {
-                        RequiredPointsValidation = $"Must be greater than or equal to {minimumRequiredXp.Value} (previous rank)";
-                    }
-                }
-                else if (rank.RequiredPoints <= minimumRequiredXp.Value)
-                {
-                    // All other cases: must be strictly greater than previous
-                    var context = rank.Parent != null ? "previous pay band" : "previous rank";
-                    RequiredPointsValidation = $"Must be greater than {minimumRequiredXp.Value} ({context})";
-                }
+                RequiredPointsValidation = xpErrors.First().Message;
             }
         }
 
@@ -1679,17 +1431,19 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             if (SelectedTreeItem?.Rank == null) return;
 
-            // Check if value is null/empty
-            if (_salary == null)
-            {
-                SalaryValidation = "Salary cannot be empty";
-                return;
-            }
+            // Use ValidationService to validate the single rank
+            var validationResult = _validationService.ValidateSingleRank(SelectedTreeItem.Rank, _ranks, ValidationContext.RealTime);
 
-            var rank = SelectedTreeItem.Rank;
-            if (rank.Salary < 0)
+            // Find errors related to Salary
+            var salaryErrors = validationResult.Issues
+                .Where(i => i.Severity == ValidationSeverity.Error &&
+                           i.RankId == SelectedTreeItem.Rank.Id &&
+                           (i.PropertyName == "Salary" || i.Message.Contains("Salary") || i.Message.Contains("salary")))
+                .ToList();
+
+            if (salaryErrors.Any())
             {
-                SalaryValidation = "Salary must be greater than or equal to 0";
+                SalaryValidation = salaryErrors.First().Message;
             }
         }
 
@@ -1699,101 +1453,41 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
             if (SelectedTreeItem?.Rank == null) return;
 
-            var currentRank = SelectedTreeItem.Rank;
+            // Use ValidationService to validate the single rank
+            var validationResult = _validationService.ValidateSingleRank(SelectedTreeItem.Rank, _ranks, ValidationContext.RealTime);
 
-            // Check for duplicate names (warning, not error)
-            // We need to check all ranks including pay bands
-            var allRanks = new List<RankHierarchy>();
-            foreach (var rank in _ranks)
+            // Find errors/warnings related to Name
+            var nameIssues = validationResult.Issues
+                .Where(i => (i.Severity == ValidationSeverity.Error || i.Severity == ValidationSeverity.Warning) &&
+                           i.RankId == SelectedTreeItem.Rank.Id &&
+                           (i.PropertyName == "Name" || i.Message.Contains("name") || i.Message.Contains("Name")))
+                .ToList();
+
+            if (nameIssues.Any())
             {
-                allRanks.Add(rank);
-                allRanks.AddRange(rank.PayBands);
-            }
-
-            // Check if another rank has the same name
-            var duplicates = allRanks.Where(r => r.Id != currentRank.Id &&
-                                                  string.Equals(r.Name, currentRank.Name, StringComparison.OrdinalIgnoreCase))
-                                     .ToList();
-
-            if (duplicates.Count > 0)
-            {
-                NameValidation = "Another rank already uses this name";
+                NameValidation = nameIssues.First().Message;
             }
         }
 
         private void CheckAdvisories()
         {
-            StationAdvisory = string.Empty;
-            SalaryAdvisory = string.Empty;
-
-            if (SelectedTreeItem?.Rank == null) return;
-
-            var currentRank = SelectedTreeItem.Rank;
-
-            // Find previous rank for comparison
-            RankHierarchy? previousRank = null;
-            int? previousSalary = null;
-
-            if (currentRank.Parent != null)
+            if (SelectedTreeItem?.Rank == null)
             {
-                // For pay bands, compare against previous pay band or previous rank
-                var payBandIndex = currentRank.Parent.PayBands.IndexOf(currentRank);
-                if (payBandIndex > 0)
-                {
-                    // Not first pay band - compare against previous pay band
-                    previousRank = currentRank.Parent.PayBands[payBandIndex - 1];
-                    previousSalary = previousRank.Salary;
-                }
-                else if (payBandIndex == 0)
-                {
-                    // First pay band - must compare against previous RANK in _ranks list, not parent
-                    // Parent derives Salary from children, so we can't use parent.Salary
-                    var parentIndex = _ranks.IndexOf(currentRank.Parent);
-                    if (parentIndex > 0)
-                    {
-                        previousRank = _ranks[parentIndex - 1];
-                        previousSalary = previousRank.IsParent && previousRank.PayBands.Count > 0
-                            ? previousRank.PayBands.Max(pb => pb.Salary)
-                            : previousRank.Salary;
-                    }
-                    // If parentIndex == 0, there's no previous rank, so no advisory applies
-                }
-            }
-            else
-            {
-                // For parent ranks, compare against previous parent rank
-                var rankIndex = _ranks.IndexOf(currentRank);
-                if (rankIndex > 0)
-                {
-                    previousRank = _ranks[rankIndex - 1];
-                    // For ranks with pay bands, use the highest pay band salary
-                    previousSalary = previousRank.IsParent && previousRank.PayBands.Count > 0
-                        ? previousRank.PayBands.Max(pb => pb.Salary)
-                        : previousRank.Salary;
-                }
+                StationAdvisory = string.Empty;
+                SalaryAdvisory = string.Empty;
+                return;
             }
 
-            if (previousRank != null)
-            {
-                // Advisory: Check for missing stations
-                var previousStations = previousRank.Stations.Select(s => s.StationName).ToHashSet();
-                var currentStations = currentRank.Stations.Select(s => s.StationName).ToHashSet();
-                var missingStations = previousStations.Except(currentStations).ToList();
+            // Use ValidationService to validate with advisory context
+            var validationResult = _validationService.ValidateSingleRank(
+                SelectedTreeItem.Rank, _ranks, ValidationContext.Full);
 
-                if (missingStations.Count > 0)
-                {
-                    var stationList = string.Join(", ", missingStations.Take(3));
-                    if (missingStations.Count > 3)
-                        stationList += $" (+{missingStations.Count - 3} more)";
-                    StationAdvisory = $"{missingStations.Count} station(s) from previous rank not present: {stationList}";
-                }
+            // Get advisories using centralized extension methods
+            StationAdvisory = validationResult.GetFirstAdvisoryMessage(
+                SelectedTreeItem.Rank.Id, "Station");
 
-                // Warning: Check for lower salary (matches severity in GetWarningsForRank)
-                if (previousSalary.HasValue && currentRank.Salary < previousSalary.Value)
-                {
-                    SalaryAdvisory = $"Salary is lower than previous ({previousSalary.Value})";
-                }
-            }
+            SalaryAdvisory = validationResult.GetFirstAdvisoryForProperty(
+                SelectedTreeItem.Rank.Id, "Salary");
         }
 
         private void UpdateCommandStates()

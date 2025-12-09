@@ -149,14 +149,14 @@ namespace LSPDFREnhancedConfigurator.Models
         public int StyleID { get; set; }
 
         /// <summary>
-        /// Optional: Station-specific vehicle overrides
+        /// Station-specific vehicles (applied in addition to global vehicles)
         /// </summary>
-        public List<Vehicle> VehicleOverrides { get; set; }
+        public List<Vehicle> Vehicles { get; set; }
 
         /// <summary>
-        /// Optional: Station-specific outfit overrides
+        /// Station-specific outfits (applied in addition to global outfits)
         /// </summary>
-        public List<string> OutfitOverrides { get; set; }
+        public List<string> Outfits { get; set; }
 
         /// <summary>
         /// Reference to the actual station definition
@@ -202,8 +202,8 @@ namespace LSPDFREnhancedConfigurator.Models
             StationName = string.Empty;
             Zones = new List<string>();
             StyleID = 0;
-            VehicleOverrides = new List<Vehicle>();
-            OutfitOverrides = new List<string>();
+            Vehicles = new List<Vehicle>();
+            Outfits = new List<string>();
         }
 
         public StationAssignment(string stationName, List<string> zones, int styleId)
@@ -211,8 +211,8 @@ namespace LSPDFREnhancedConfigurator.Models
             StationName = stationName;
             Zones = zones ?? new List<string>();
             StyleID = styleId;
-            VehicleOverrides = new List<Vehicle>();
-            OutfitOverrides = new List<string>();
+            Vehicles = new List<Vehicle>();
+            Outfits = new List<string>();
         }
 
         public override string ToString()

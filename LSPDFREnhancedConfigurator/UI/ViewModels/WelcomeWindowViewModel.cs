@@ -182,7 +182,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                     profileCount = Directory.GetDirectories(profilesDir).Length;
                 }
 
-                if (validation.Severity == ValidationSeverity.Warning)
+                if (validation.Severity == GtaValidationSeverity.Warning)
                 {
                     ValidationMessage = $"{validation.ErrorMessage}\n\n✓ {profileCount} profile(s) found";
                     ValidationForeground = Brushes.Orange;
@@ -199,9 +199,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             else
             {
                 ValidationMessage = validation.ErrorMessage;
-                ValidationForeground = validation.Severity == ValidationSeverity.Error ? Brushes.Red : Brushes.Orange;
+                ValidationForeground = validation.Severity == GtaValidationSeverity.Error ? Brushes.Red : Brushes.Orange;
                 ShowValidationMessage = true;
-                CanProceed = validation.Severity == ValidationSeverity.Warning;
+                CanProceed = validation.Severity == GtaValidationSeverity.Warning;
                 Logger.Warn($"Directory validation result ({validation.Severity}): {validation.ErrorMessage}");
             }
         }

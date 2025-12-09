@@ -7,18 +7,26 @@ using LSPDFREnhancedConfigurator.Commands;
 using LSPDFREnhancedConfigurator.Commands.Outfits;
 using LSPDFREnhancedConfigurator.Models;
 using LSPDFREnhancedConfigurator.Services;
+using LSPDFREnhancedConfigurator.Services.Validation;
+using LSPDFREnhancedConfigurator.Services.Validation.Models;
+
+// Use the unified ValidationSeverity from the validation service
+using RankValidationSeverity = LSPDFREnhancedConfigurator.Services.Validation.ValidationSeverity;
 
 namespace LSPDFREnhancedConfigurator.UI.ViewModels
 {
     public class OutfitsViewModel : ViewModelBase
     {
         private DataLoadingService? _dataService;
+        private ValidationService? _validationService;
+        private SelectionStateService? _selectionStateService;
         private List<RankHierarchy> _ranks = new List<RankHierarchy>();
         private RankHierarchy? _selectedRank;
         private RankHierarchy? _selectedCopyFromRank;
         private RankHierarchy? _selectedCopyToRank;
         private OutfitTreeItemViewModel? _selectedTreeItem;
         private string _outfitAdvisory = string.Empty;
+        private bool _isUpdatingFromService = false;
 
         // Command Pattern Undo/Redo Manager
         private readonly UndoRedoManager _undoRedoManager = new UndoRedoManager(maxStackSize: 50);
@@ -26,6 +34,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         public OutfitsViewModel(DataLoadingService dataService, List<RankHierarchy>? loadedRanks)
         {
             _dataService = dataService;
+            _validationService = new ValidationService(dataService);
 
             if (loadedRanks != null && loadedRanks.Count > 0)
             {
@@ -76,6 +85,12 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 {
                     OnRankChanged();
                     UpdateCommandStates();
+
+                    // Notify selection service (unless we're updating from the service)
+                    if (!_isUpdatingFromService && _selectionStateService != null)
+                    {
+                        _selectionStateService.SelectedRank = value;
+                    }
                 }
             }
         }
@@ -159,13 +174,22 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             {
                 // Determine if we're adding to a specific station
                 Station? contextStation = null;
+                List<string> existingOutfits = new List<string>();
+
                 if (SelectedTreeItem != null && SelectedTreeItem.IsStationNode && SelectedTreeItem.Station != null)
                 {
                     contextStation = SelectedTreeItem.Station.StationReference;
+                    // For station context, exclude outfits already assigned to this station
+                    existingOutfits.AddRange(SelectedTreeItem.Station.Outfits);
+                }
+                else
+                {
+                    // For global context, exclude outfits already assigned globally
+                    existingOutfits.AddRange(SelectedRank.Outfits);
                 }
 
-                // Create dialog viewmodel with station context
-                var dialogViewModel = new AddOutfitsDialogViewModel(_dataService, contextStation);
+                // Create dialog viewmodel with station context and existing outfits to exclude
+                var dialogViewModel = new AddOutfitsDialogViewModel(_dataService, contextStation, existingOutfits);
 
                 // Show dialog
                 var dialog = new Views.AddOutfitsDialog
@@ -187,14 +211,14 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                             // Filter out outfits that already exist in this station
                             var outfitsToAdd = dialogViewModel.SelectedOutfits
-                                .Where(o => !station.OutfitOverrides.Contains(o))
+                                .Where(o => !station.Outfits.Contains(o))
                                 .ToList();
 
                             if (outfitsToAdd.Count > 0)
                             {
                                 foreach (var outfit in outfitsToAdd)
                                 {
-                                    station.OutfitOverrides.Add(outfit);
+                                    station.Outfits.Add(outfit);
                                 }
 
                                 LoadOutfitsForSelectedRank();
@@ -281,7 +305,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
                     foreach (var outfit in outfits)
                     {
-                        station.OutfitOverrides.Remove(outfit);
+                        station.Outfits.Remove(outfit);
                     }
 
                     Logger.Info($"[USER] Removed {outfits.Count} outfit(s) from station '{station.StationName}': {outfitList}");
@@ -345,7 +369,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             var allOutfits = new System.Collections.Generic.HashSet<string>(SelectedCopyFromRank.Outfits, System.StringComparer.OrdinalIgnoreCase);
             foreach (var station in SelectedCopyFromRank.Stations)
             {
-                foreach (var outfit in station.OutfitOverrides)
+                foreach (var outfit in station.Outfits)
                 {
                     allOutfits.Add(outfit);
                 }
@@ -465,7 +489,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
             var allOutfits = new System.Collections.Generic.HashSet<string>(SelectedRank.Outfits, System.StringComparer.OrdinalIgnoreCase);
             foreach (var station in SelectedRank.Stations)
             {
-                foreach (var outfit in station.OutfitOverrides)
+                foreach (var outfit in station.Outfits)
                 {
                     allOutfits.Add(outfit);
                 }
@@ -602,6 +626,20 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         #endregion
 
+        #region Public Methods
+
+        /// <summary>
+        /// Refreshes the outfit tree to reflect current rank/station state.
+        /// Called when station assignments change in another tab.
+        /// </summary>
+        public void RefreshOutfitTree()
+        {
+            LoadOutfitsForSelectedRank();
+            CheckAdvisories();
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private void OnRankChanged()
@@ -658,7 +696,7 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
                 var stationNode = new OutfitTreeItemViewModel(stationText, station: station, checkedChangedCallback: OnTreeItemCheckedChanged);
 
                 // Add station-specific outfit overrides
-                foreach (var outfit in station.OutfitOverrides)
+                foreach (var outfit in station.Outfits)
                 {
                     var outfitNode = new OutfitTreeItemViewModel(outfit, outfit, parent: stationNode, checkedChangedCallback: OnTreeItemCheckedChanged);
 
@@ -744,6 +782,9 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void OnOutfitsChanged()
         {
+            // Check advisories when outfits change
+            CheckAdvisories();
+
             // Notify parent that outfits have changed
             // This would trigger XML regeneration in the main window
             DataChanged?.Invoke(this, EventArgs.Empty);
@@ -756,40 +797,19 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
 
         private void CheckAdvisories()
         {
-            OutfitAdvisory = string.Empty;
-
-            if (SelectedRank == null) return;
-
-            // Find previous rank for comparison
-            int rankIndex = _ranks.IndexOf(SelectedRank);
-            if (rankIndex <= 0) return; // No previous rank
-
-            var previousRank = _ranks[rankIndex - 1];
-
-            // Get all outfits from previous rank (global + station-specific)
-            var previousGlobalOutfits = previousRank.Outfits.ToHashSet();
-            var previousStationOutfits = previousRank.Stations
-                .SelectMany(s => s.OutfitOverrides)
-                .ToHashSet();
-            var allPreviousOutfits = previousGlobalOutfits.Union(previousStationOutfits).ToHashSet();
-
-            // Get all outfits from current rank (global + station-specific)
-            var currentGlobalOutfits = SelectedRank.Outfits.ToHashSet();
-            var currentStationOutfits = SelectedRank.Stations
-                .SelectMany(s => s.OutfitOverrides)
-                .ToHashSet();
-            var allCurrentOutfits = currentGlobalOutfits.Union(currentStationOutfits).ToHashSet();
-
-            // Find missing outfits
-            var missingOutfits = allPreviousOutfits.Except(allCurrentOutfits).ToList();
-
-            if (missingOutfits.Count > 0)
+            if (SelectedRank == null || _validationService == null)
             {
-                var outfitList = string.Join(", ", missingOutfits.Take(3));
-                if (missingOutfits.Count > 3)
-                    outfitList += $" (+{missingOutfits.Count - 3} more)";
-                OutfitAdvisory = $"{missingOutfits.Count} outfit(s) from previous rank not present: {outfitList}";
+                OutfitAdvisory = string.Empty;
+                return;
             }
+
+            // Use ValidationService to validate with advisory context
+            var validationResult = _validationService.ValidateSingleRank(
+                SelectedRank, _ranks, ValidationContext.Full);
+
+            // Get advisories using centralized extension method
+            OutfitAdvisory = validationResult.GetFirstAdvisoryMessage(
+                SelectedRank.Id, "Outfit");
         }
 
         #endregion
@@ -799,6 +819,31 @@ namespace LSPDFREnhancedConfigurator.UI.ViewModels
         public void SetDataService(DataLoadingService dataService)
         {
             _dataService = dataService;
+        }
+
+        public void SetSelectionStateService(SelectionStateService selectionStateService)
+        {
+            _selectionStateService = selectionStateService;
+
+            // Subscribe to rank selection changes from the service
+            _selectionStateService.RankSelectionChanged += OnSelectionStateServiceRankChanged;
+        }
+
+        private void OnSelectionStateServiceRankChanged(object? sender, RankSelectionChangedEventArgs e)
+        {
+            // Update local selection to match the service (prevent feedback loop)
+            if (_selectedRank != e.SelectedRank)
+            {
+                _isUpdatingFromService = true;
+                try
+                {
+                    SelectedRank = e.SelectedRank;
+                }
+                finally
+                {
+                    _isUpdatingFromService = false;
+                }
+            }
         }
 
         public void LoadRanks(List<RankHierarchy> ranks)

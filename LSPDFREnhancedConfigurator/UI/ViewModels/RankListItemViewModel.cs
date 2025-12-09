@@ -1,6 +1,10 @@
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using LSPDFREnhancedConfigurator.Models;
+using LSPDFREnhancedConfigurator.Services.Validation;
+
+// Use the unified ValidationSeverity from the validation service
+using RankValidationSeverity = LSPDFREnhancedConfigurator.Services.Validation.ValidationSeverity;
 
 namespace LSPDFREnhancedConfigurator.UI.ViewModels
 {

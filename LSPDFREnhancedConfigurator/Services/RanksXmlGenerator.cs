@@ -88,6 +88,30 @@ namespace LSPDFREnhancedConfigurator.Services
                     // StyleID
                     stationElement.Add(new XElement("StyleID", station.StyleID));
 
+                    // Station-specific Vehicles
+                    if (station.Vehicles.Count > 0)
+                    {
+                        var vehiclesElement = new XElement("Vehicles");
+                        foreach (var vehicle in station.Vehicles)
+                        {
+                            vehiclesElement.Add(new XElement("Vehicle",
+                                new XAttribute("model", vehicle.Model),
+                                vehicle.DisplayName));
+                        }
+                        stationElement.Add(vehiclesElement);
+                    }
+
+                    // Station-specific Outfits
+                    if (station.Outfits.Count > 0)
+                    {
+                        var outfitsElement = new XElement("Outfits");
+                        foreach (var outfit in station.Outfits)
+                        {
+                            outfitsElement.Add(new XElement("Outfit", outfit));
+                        }
+                        stationElement.Add(outfitsElement);
+                    }
+
                     stationsElement.Add(stationElement);
                 }
 
@@ -125,58 +149,5 @@ namespace LSPDFREnhancedConfigurator.Services
             return rankElement;
         }
 
-        public static List<string> ValidateRanks(List<RankHierarchy> rankHierarchies)
-        {
-            var errors = new List<string>();
-
-            if (rankHierarchies.Count == 0)
-            {
-                errors.Add("No ranks defined. At least one rank is required.");
-                return errors;
-            }
-
-            // Flatten all ranks (including pay bands)
-            var allRanks = new List<RankHierarchy>();
-            foreach (var hierarchy in rankHierarchies)
-            {
-                if (hierarchy.IsParent && hierarchy.PayBands.Count > 0)
-                {
-                    allRanks.AddRange(hierarchy.PayBands);
-                }
-                else
-                {
-                    allRanks.Add(hierarchy);
-                }
-            }
-
-            // Check first rank starts at 0
-            if (allRanks[0].RequiredPoints != 0)
-            {
-                errors.Add($"First rank '{allRanks[0].Name}' must start at XP 0, not {allRanks[0].RequiredPoints}.");
-            }
-
-            // Check for XP progression - each rank must have RequiredPoints greater than previous
-            for (int i = 0; i < allRanks.Count - 1; i++)
-            {
-                var current = allRanks[i];
-                var next = allRanks[i + 1];
-
-                if (next.RequiredPoints <= current.RequiredPoints)
-                {
-                    errors.Add($"Rank '{next.Name}' (XP: {next.RequiredPoints}) must have Required Points greater than '{current.Name}' (XP: {current.RequiredPoints}).");
-                }
-            }
-
-            // Check each rank has at least one station assigned
-            foreach (var rank in allRanks)
-            {
-                if (rank.Stations.Count == 0)
-                {
-                    errors.Add($"Rank '{rank.Name}' has no stations assigned. Each rank must have at least one station.");
-                }
-            }
-
-            return errors;
-        }
     }
 }

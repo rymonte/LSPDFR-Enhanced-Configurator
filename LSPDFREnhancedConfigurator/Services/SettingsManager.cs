@@ -109,6 +109,7 @@ namespace LSPDFREnhancedConfigurator.Services
                     "",
                     "# Validation Settings",
                     $"validationSeverity={GetInt("validationSeverity", 0)}", // 0=ShowAll, 1=WarningsAndErrorsOnly, 2=ErrorsOnly
+                    $"dismissedValidations={GetDismissedValidationsString()}",
                 };
 
                 File.WriteAllLines(_settingsFilePath, lines);
@@ -141,6 +142,7 @@ namespace LSPDFREnhancedConfigurator.Services
             _settings["autoSaveInterval"] = "0";
             _settings["logVerbosity"] = ((int)LogLevel.Info).ToString();
             _settings["validationSeverity"] = "0"; // ShowAll
+            _settings["dismissedValidations"] = "";
 
             Save();
         }
@@ -378,6 +380,74 @@ namespace LSPDFREnhancedConfigurator.Services
 
             // Otherwise, return default directory
             return GetDefaultBackupDirectory();
+        }
+
+        /// <summary>
+        /// Get list of dismissed validations
+        /// </summary>
+        public List<string> GetDismissedValidations()
+        {
+            var dismissedString = GetString("dismissedValidations", "");
+            if (string.IsNullOrEmpty(dismissedString))
+                return new List<string>();
+
+            // Format: "rankId1|category1|item1;rankId2|category2|item2;..."
+            return dismissedString.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        }
+
+        /// <summary>
+        /// Set list of dismissed validations
+        /// </summary>
+        public void SetDismissedValidations(List<string> dismissals)
+        {
+            var dismissedString = string.Join(";", dismissals);
+            SetString("dismissedValidations", dismissedString);
+            Save();
+        }
+
+        /// <summary>
+        /// Add a single dismissed validation
+        /// </summary>
+        public void AddDismissedValidation(string rankId, string category, string itemName)
+        {
+            var key = $"{rankId}|{category}|{itemName}";
+            var dismissals = GetDismissedValidations();
+
+            if (!dismissals.Contains(key))
+            {
+                dismissals.Add(key);
+                SetDismissedValidations(dismissals);
+            }
+        }
+
+        /// <summary>
+        /// Remove a single dismissed validation
+        /// </summary>
+        public void RemoveDismissedValidation(string rankId, string category, string itemName)
+        {
+            var key = $"{rankId}|{category}|{itemName}";
+            var dismissals = GetDismissedValidations();
+
+            if (dismissals.Remove(key))
+            {
+                SetDismissedValidations(dismissals);
+            }
+        }
+
+        /// <summary>
+        /// Clear all dismissed validations
+        /// </summary>
+        public void ClearDismissedValidations()
+        {
+            SetDismissedValidations(new List<string>());
+        }
+
+        /// <summary>
+        /// Get dismissed validations string for Save() method
+        /// </summary>
+        private string GetDismissedValidationsString()
+        {
+            return GetString("dismissedValidations", "");
         }
     }
 }

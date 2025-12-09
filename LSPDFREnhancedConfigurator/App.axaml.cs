@@ -39,6 +39,11 @@ namespace LSPDFREnhancedConfigurator
                 var settingsManager = new SettingsManager();
                 Logger.Debug("SettingsManager initialized");
 
+                // Set logger verbosity from settings
+                var logVerbosity = settingsManager.GetLogVerbosity();
+                Logger.CurrentLogLevel = logVerbosity;
+                Logger.Info($"Logger verbosity set to: {logVerbosity}");
+
                 // Check for GTA V directory
                 string? gtaRootPath = settingsManager.GetGtaVDirectory();
                 bool skipWelcome = settingsManager.GetSkipWelcomeScreen();
@@ -87,11 +92,11 @@ namespace LSPDFREnhancedConfigurator
                     Logger.Error($"GTA V directory validation failed ({validation.Severity}): {validation.ErrorMessage}");
 
                     // Determine window title and header color based on severity
-                    string windowTitle = validation.Severity == ValidationSeverity.Error
+                    string windowTitle = validation.Severity == GtaValidationSeverity.Error
                         ? "GTA V Installation Error"
                         : "GTA V Installation Warning";
 
-                    IBrush headerColor = validation.Severity == ValidationSeverity.Error
+                    IBrush headerColor = validation.Severity == GtaValidationSeverity.Error
                         ? Brushes.Red
                         : Brushes.Orange;
 
@@ -190,7 +195,7 @@ namespace LSPDFREnhancedConfigurator
                                     {
                                         new Image
                                         {
-                                            Source = validation.Severity == ValidationSeverity.Error
+                                            Source = validation.Severity == GtaValidationSeverity.Error
                                                 ? LoadBitmapFromResource("/Resources/Icons/error-icon.png")
                                                 : LoadBitmapFromResource("/Resources/Icons/warning-icon.png"),
                                             Width = 32,
@@ -199,7 +204,7 @@ namespace LSPDFREnhancedConfigurator
                                         },
                                         new TextBlock
                                         {
-                                            Text = validation.Severity == ValidationSeverity.Error
+                                            Text = validation.Severity == GtaValidationSeverity.Error
                                                 ? "Invalid GTA V Installation"
                                                 : "Missing Required Components",
                                             FontSize = 18,
@@ -285,7 +290,7 @@ namespace LSPDFREnhancedConfigurator
                             var headerIcon = (Image)headerPanel.Children[0];
                             var headerText = (TextBlock)headerPanel.Children[1];
 
-                            if (newValidation.Severity == ValidationSeverity.Error)
+                            if (newValidation.Severity == GtaValidationSeverity.Error)
                             {
                                 headerIcon.Source = LoadBitmapFromResource("/Resources/Icons/error-icon.png");
                                 headerText.Text = "Invalid GTA V Installation";
@@ -332,7 +337,7 @@ namespace LSPDFREnhancedConfigurator
             Logger.Info($"Using GTA V directory: {gtaRootPath}");
 
             // Get available profiles first
-            var profiles = RanksXmlLoader.GetAvailableProfiles(gtaRootPath);
+            var profiles = Parsers.RanksParser.GetAvailableProfiles(gtaRootPath);
             string? currentProfile = null;
 
             if (profiles.Count == 0)
@@ -429,10 +434,10 @@ namespace LSPDFREnhancedConfigurator
                 mainViewModel.UpdateLoadingProgress("Loading ranks...", $"Reading Ranks.xml for profile: {currentProfile}", 20);
 
                 List<Models.RankHierarchy>? loadedRanks = null;
-                var ranksPath = RanksXmlLoader.FindRanksXml(gtaRootPath, currentProfile);
+                var ranksPath = Parsers.RanksParser.FindRanksXml(gtaRootPath, currentProfile);
                 if (ranksPath != null)
                 {
-                    loadedRanks = RanksXmlLoader.LoadFromFile(ranksPath);
+                    loadedRanks = Parsers.RanksParser.ParseRanksFile(ranksPath);
                     Logger.Debug($"Loaded {loadedRanks.Count} ranks from {ranksPath}");
                 }
 
@@ -468,32 +473,41 @@ namespace LSPDFREnhancedConfigurator
                 {
                     mainViewModel.UpdateLoadingProgress("Validating configuration...", "Checking for issues", 90);
                     var validationService = new StartupValidationService(dataService);
-                    var validationReport = validationService.ValidateRanks(loadedRanks);
+                    var validationResult = validationService.ValidateRanks(loadedRanks);
 
                     // Update validation in MainWindowViewModel
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        mainViewModel.ValidationErrorCount = validationReport.Errors.Count + validationReport.Warnings.Count;
-                        mainViewModel.ValidationErrorsText = validationReport.HasIssues
-                            ? validationReport.GetSummary()
+                        mainViewModel.ValidationErrorCount = validationResult.ErrorCount + validationResult.WarningCount + validationResult.AdvisoryCount;
+                        mainViewModel.ValidationErrorsText = validationResult.HasIssues
+                            ? validationResult.GetSummary()
                             : "✅ No validation errors found.\n\nAll ranks have valid progression and references.";
 
                         // Populate ValidationErrorItems for icon visibility
                         mainViewModel.ValidationErrorItems.Clear();
-                        foreach (var error in validationReport.Errors)
+                        foreach (var error in validationResult.Errors)
                         {
-                            mainViewModel.AddValidationItemFromMessage(error, "Error");
+                            mainViewModel.ValidationErrorItems.Add(mainViewModel.ParseValidationIssue(error));
                         }
-                        foreach (var warning in validationReport.Warnings)
+                        foreach (var warning in validationResult.Warnings)
                         {
-                            mainViewModel.AddValidationItemFromMessage(warning, "Warning");
+                            mainViewModel.ValidationErrorItems.Add(mainViewModel.ParseValidationIssue(warning));
+                        }
+                        foreach (var advisory in validationResult.Advisories)
+                        {
+                            mainViewModel.ValidationErrorItems.Add(mainViewModel.ParseValidationIssue(advisory));
                         }
                     });
 
-                    // Show warning dialog if there are issues
-                    if (validationReport.HasIssues)
+                    // Log all validation results
+                    if (validationResult.HasIssues)
                     {
-                        Logger.Warn($"Validation found {validationReport.Errors.Count} error(s) and {validationReport.Warnings.Count} warning(s)");
+                        Logger.Info($"Validation found {validationResult.ErrorCount} error(s), {validationResult.WarningCount} warning(s), and {validationResult.AdvisoryCount} advisory(ies)");
+                    }
+
+                    // Show warning dialog if there are errors or warnings (not for advisories alone)
+                    if (validationResult.HasErrors || validationResult.HasWarnings)
+                    {
 
                         await Dispatcher.UIThread.InvokeAsync(async () =>
                         {
@@ -534,7 +548,7 @@ namespace LSPDFREnhancedConfigurator
                                         },
                                         new TextBlock
                                         {
-                                            Text = $"The loaded Ranks.xml contains {validationReport.Errors.Count} error(s) and {validationReport.Warnings.Count} warning(s):",
+                                            Text = $"The loaded Ranks.xml contains {validationResult.ErrorCount} error(s) and {validationResult.WarningCount} warning(s):",
                                             TextWrapping = TextWrapping.Wrap
                                         },
                                         new ScrollViewer
@@ -542,7 +556,7 @@ namespace LSPDFREnhancedConfigurator
                                             MaxHeight = 200,
                                             Content = new TextBlock
                                             {
-                                                Text = validationReport.GetSummary(),
+                                                Text = validationResult.GetSummary(),
                                                 TextWrapping = TextWrapping.Wrap,
                                                 FontFamily = new Avalonia.Media.FontFamily("Consolas,Courier New,monospace"),
                                                 FontSize = 12
@@ -704,7 +718,7 @@ namespace LSPDFREnhancedConfigurator
                 var backupFiles = new List<string>();
                 try
                 {
-                    var ranksPath = RanksXmlLoader.FindRanksXml(gtaRootPath, currentProfile);
+                    var ranksPath = Parsers.RanksParser.FindRanksXml(gtaRootPath, currentProfile);
                     if (ranksPath != null)
                     {
                         var directory = Path.GetDirectoryName(ranksPath);
