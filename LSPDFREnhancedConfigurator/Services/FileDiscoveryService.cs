@@ -22,7 +22,7 @@ namespace LSPDFREnhancedConfigurator.Services
         /// </summary>
         public List<string> FindAgencyFiles()
         {
-            return FindFilesRecursive("Agency*.xml");
+            return FindFilesRecursive("agency*.xml");
         }
 
         /// <summary>
