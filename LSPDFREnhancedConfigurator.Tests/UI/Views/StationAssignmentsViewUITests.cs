@@ -93,13 +93,14 @@ public class StationAssignmentsViewUITests
     public void StationAssignmentsView_WithStations_LoadsCorrectly()
     {
         // Arrange
-        var mockService = new MockServiceBuilder().BuildMock();
+        var mockService = new MockServiceBuilder().WithDefaultStations().BuildMock();
         var viewModel = new StationAssignmentsViewModel(mockService.Object);
         var officer = new RankHierarchyBuilder().WithName("Officer").Build();
         officer.Stations.Add(new StationAssignment("Mission Row", new List<string>(), 1));
 
         var ranks = new List<RankHierarchy> { officer };
         viewModel.LoadRanks(ranks);
+        viewModel.SelectedRank = officer; // This triggers FilterAvailableStations()
 
         // Act
         var view = new StationAssignmentsView

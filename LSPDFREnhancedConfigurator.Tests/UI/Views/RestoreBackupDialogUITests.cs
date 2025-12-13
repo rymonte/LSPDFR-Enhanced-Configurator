@@ -115,11 +115,16 @@ public class RestoreBackupDialogUITests
         // Arrange
         var gtaDir = CreateTestGtaDirectory();
         var settingsManager = CreateTestSettingsManager();
-        var ranksPath = Path.Combine(gtaDir, "plugins", "LSPDFR", "LSPDFR Enhanced", "Profiles", "Default", "Ranks.xml");
 
-        // Create Ranks.xml and a backup
-        File.WriteAllText(ranksPath, "<Ranks></Ranks>");
-        File.WriteAllText(ranksPath + ".backup_001.xml", "<Ranks></Ranks>");
+        // Set backup directory in settings
+        var backupDir = Path.Combine(Path.GetTempPath(), $"test_backups_{System.Guid.NewGuid()}", "Default");
+        Directory.CreateDirectory(backupDir);
+        settingsManager.SetBackupDirectory(Path.GetDirectoryName(backupDir));
+
+        // Create a backup file with proper naming (Ranks_YYYYMMDD_HHMMSS.xml)
+        var timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var backupFile = Path.Combine(backupDir, $"Ranks_{timestamp}.xml");
+        File.WriteAllText(backupFile, "<Ranks></Ranks>");
 
         var viewModel = new RestoreBackupDialogViewModel(gtaDir, "Default", settingsManager);
 
@@ -140,6 +145,10 @@ public class RestoreBackupDialogUITests
             {
                 Directory.Delete(gtaDir, true);
             }
+            if (Directory.Exists(backupDir))
+            {
+                Directory.Delete(backupDir, true);
+            }
         }
     }
 
@@ -159,8 +168,8 @@ public class RestoreBackupDialogUITests
                 DataContext = viewModel
             };
 
-            // Assert
-            viewModel.SelectedBackupPath.Should().BeEmpty();
+            // Assert - SelectedBackupPath will be null when no backups exist
+            viewModel.SelectedBackupPath.Should().BeNullOrEmpty();
         }
         finally
         {

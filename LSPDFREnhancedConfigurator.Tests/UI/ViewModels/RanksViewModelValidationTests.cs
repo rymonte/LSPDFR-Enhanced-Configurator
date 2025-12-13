@@ -25,13 +25,13 @@ namespace LSPDFREnhancedConfigurator.Tests.UI.ViewModels
             _mockDataService = new Mock<DataLoadingService>(null);
 
             // Setup minimal mock data
-            _mockDataService.Setup(x => x.AllVehicles).Returns(new List<Vehicle>());
-            _mockDataService.Setup(x => x.Stations).Returns(new List<Station>
+            _mockDataService.SetupGet(x => x.AllVehicles).Returns(new List<Vehicle>());
+            _mockDataService.SetupGet(x => x.Stations).Returns(new List<Station>
             {
                 new Station { Name = "Mission Row" },
                 new Station { Name = "Vespucci" }
             });
-            _mockDataService.Setup(x => x.OutfitVariations).Returns(new List<OutfitVariation>());
+            _mockDataService.SetupGet(x => x.OutfitVariations).Returns(new List<OutfitVariation>());
 
             // Create ViewModel (with null ranks initially)
             _viewModel = new RanksViewModel(null, _mockDataService.Object);
