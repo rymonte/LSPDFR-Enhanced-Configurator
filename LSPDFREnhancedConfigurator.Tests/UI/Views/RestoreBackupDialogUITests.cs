@@ -116,13 +116,15 @@ public class RestoreBackupDialogUITests
         var gtaDir = CreateTestGtaDirectory();
         var settingsManager = CreateTestSettingsManager();
 
-        // Set backup directory in settings
-        var backupDir = Path.Combine(Path.GetTempPath(), $"test_backups_{System.Guid.NewGuid()}", "Default");
+        // Set backup directory in settings - use the parent directory
+        var backupRoot = Path.Combine(Path.GetTempPath(), $"test_backups_{System.Guid.NewGuid()}");
+        var backupDir = Path.Combine(backupRoot, "Default");
         Directory.CreateDirectory(backupDir);
-        settingsManager.SetBackupDirectory(Path.GetDirectoryName(backupDir));
+        settingsManager.SetBackupDirectory(backupRoot);
 
-        // Create a backup file with proper naming (Ranks_YYYYMMDD_HHMMSS.xml)
-        var timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        // Create a backup file with proper naming (Ranks_YYYYMMDD-HHMM.xml)
+        // Use the format expected by BackupPathHelper.GetBackupFileName
+        var timestamp = System.DateTime.Now.ToString("yyyyMMdd-HHmm");
         var backupFile = Path.Combine(backupDir, $"Ranks_{timestamp}.xml");
         File.WriteAllText(backupFile, "<Ranks></Ranks>");
 
@@ -145,9 +147,9 @@ public class RestoreBackupDialogUITests
             {
                 Directory.Delete(gtaDir, true);
             }
-            if (Directory.Exists(backupDir))
+            if (Directory.Exists(backupRoot))
             {
-                Directory.Delete(backupDir, true);
+                Directory.Delete(backupRoot, true);
             }
         }
     }
