@@ -36,7 +36,7 @@ static class Program
 
     /// <summary>
     /// Avalonia configuration, don't remove; also used by visual designer.
-    /// </summary>
+    /// </summary>i'
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
